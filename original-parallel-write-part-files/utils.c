@@ -97,6 +97,8 @@ SlicePtr OpenSliceFile(int ixStart, int ixEnd,
   strcat(ret->fNameBinary,ret->fNameHeader);
   strcat(ret->fNameBinary,"@");
 
+  strcpy(ret->fProbName, fName);
+
   // create header and binary files in rsf format
   
   ret->fpHead=fopen(ret->fNameHeader, "w+");
@@ -164,11 +166,18 @@ void DumpSliceFile_Parallel(int sx, int sy, int sz,
   
   // dump section to binary file
 
-  char partFileName[256];
-  sprintf(partFileName, "%s%d.bin", "TTI_part_", it);
-  FILE* outFile = fopen(partFileName, "wb");
+  char partFileName[256], partFileNameBin[256], partFileNameHeader[256];
+  sprintf(partFileName, "%s%s%d", p->fProbName, "_part_", it);
+  // sprintf(partFileNameBin, "%s%d.rsf@", "TTI_part_", it);
+  sprintf(partFileNameBin, "%s%s", partFileName, ".rsf@");
+  sprintf(partFileNameHeader, "%s%s", partFileName, ".rsf");
+
+  printf("filename: %s\n", partFileName);
+
+  FILE* outFile = fopen(partFileNameBin, "wb");
+  
   if (outFile == NULL) {
-      printf("Error opening output file: %s\n", partFileName);
+      printf("Error opening output file: %s\n", partFileNameBin);
       // fclose(inFile);
       return;
   }
@@ -183,6 +192,8 @@ void DumpSliceFile_Parallel(int sx, int sy, int sz,
   }
 
   fclose(outFile);
+
+  CloseSlicePartFile(p, partFileNameBin, partFileNameHeader);
 
   // increase it count
   
@@ -202,7 +213,7 @@ void CloseSliceFile(SlicePtr p){
   case XSLICE:
     fprintf(p->fpHead,"n1=%d\n",p->iyEnd-p->iyStart+1);
     fprintf(p->fpHead,"n2=%d\n",p->izEnd-p->izStart+1);
-    fprintf(p->fpHead,"n3=%d\n",p->itCnt);
+    // fprintf(p->fpHead,"n3=%d\n",p->itCnt);
     fprintf(p->fpHead,"d1=%f\n",p->dy);
     fprintf(p->fpHead,"d2=%f\n",p->dz);
     fprintf(p->fpHead,"d3=%f\n",p->dt);
@@ -210,7 +221,7 @@ void CloseSliceFile(SlicePtr p){
   case YSLICE:
     fprintf(p->fpHead,"n1=%d\n",p->ixEnd-p->ixStart+1);
     fprintf(p->fpHead,"n2=%d\n",p->izEnd-p->izStart+1);
-    fprintf(p->fpHead,"n3=%d\n",p->itCnt);
+    // fprintf(p->fpHead,"n3=%d\n",p->itCnt);
     fprintf(p->fpHead,"d1=%f\n",p->dx);
     fprintf(p->fpHead,"d2=%f\n",p->dz);
     fprintf(p->fpHead,"d3=%f\n",p->dt);
@@ -218,7 +229,7 @@ void CloseSliceFile(SlicePtr p){
   case ZSLICE:
     fprintf(p->fpHead,"n1=%d\n",p->ixEnd-p->ixStart+1);
     fprintf(p->fpHead,"n2=%d\n",p->iyEnd-p->iyStart+1);
-    fprintf(p->fpHead,"n3=%d\n",p->itCnt);
+    // fprintf(p->fpHead,"n3=%d\n",p->itCnt);
     fprintf(p->fpHead,"d1=%f\n",p->dx);
     fprintf(p->fpHead,"d2=%f\n",p->dy);
     fprintf(p->fpHead,"d3=%f\n",p->dt);
@@ -227,7 +238,7 @@ void CloseSliceFile(SlicePtr p){
     fprintf(p->fpHead,"n1=%d\n",p->ixEnd-p->ixStart+1);
     fprintf(p->fpHead,"n2=%d\n",p->iyEnd-p->iyStart+1);
     fprintf(p->fpHead,"n3=%d\n",p->izEnd-p->izStart+1);
-    fprintf(p->fpHead,"n4=%d\n",p->itCnt);
+    // fprintf(p->fpHead,"n4=%d\n",p->itCnt);
     fprintf(p->fpHead,"d1=%f\n",p->dx);
     fprintf(p->fpHead,"d2=%f\n",p->dy);
     fprintf(p->fpHead,"d3=%f\n",p->dz);
@@ -236,6 +247,65 @@ void CloseSliceFile(SlicePtr p){
   }
   fclose(p->fpHead);
   fclose(p->fpBinary);
+}
+
+
+// CloseSliceFile: close file in RFS format that has been continuously appended
+
+
+void CloseSlicePartFile(SlicePtr p, char *partFileNameBin, char *partFileNameHeader){
+
+  FILE* partFileHeader = fopen(partFileNameHeader, "w");
+
+  printf("part filename: %s\n", partFileNameHeader);
+  
+  if (partFileHeader == NULL) {
+      printf("Error opening output file: %s\n", partFileNameHeader);
+      // fclose(inFile);
+      return;
+  }
+
+  fprintf(partFileHeader,"in=\"%s\"\n", partFileNameBin);
+  fprintf(partFileHeader,"data_format=\"native_float\"\n");
+  fprintf(partFileHeader,"esize=%lu\n", sizeof(float)); 
+  switch(p->direction) {
+  case XSLICE:
+    fprintf(partFileHeader,"n1=%d\n",p->iyEnd-p->iyStart+1);
+    fprintf(partFileHeader,"n2=%d\n",p->izEnd-p->izStart+1);
+    //fprintf(partFileHeader,"n3=%d\n",p->itCnt);
+    fprintf(partFileHeader,"d1=%f\n",p->dy);
+    fprintf(partFileHeader,"d2=%f\n",p->dz);
+    fprintf(partFileHeader,"d3=%f\n",p->dt);
+    break;
+  case YSLICE:
+    fprintf(partFileHeader,"n1=%d\n",p->ixEnd-p->ixStart+1);
+    fprintf(partFileHeader,"n2=%d\n",p->izEnd-p->izStart+1);
+    //fprintf(partFileHeader,"n3=%d\n",p->itCnt);
+    fprintf(partFileHeader,"d1=%f\n",p->dx);
+    fprintf(partFileHeader,"d2=%f\n",p->dz);
+    fprintf(partFileHeader,"d3=%f\n",p->dt);
+    break;
+  case ZSLICE:
+    fprintf(partFileHeader,"n1=%d\n",p->ixEnd-p->ixStart+1);
+    fprintf(partFileHeader,"n2=%d\n",p->iyEnd-p->iyStart+1);
+    //fprintf(partFileHeader,"n3=%d\n",p->itCnt);
+    fprintf(partFileHeader,"d1=%f\n",p->dx);
+    fprintf(partFileHeader,"d2=%f\n",p->dy);
+    fprintf(partFileHeader,"d3=%f\n",p->dt);
+    break;
+  case FULL:
+    fprintf(partFileHeader,"n1=%d\n",p->ixEnd-p->ixStart+1);
+    fprintf(partFileHeader,"n2=%d\n",p->iyEnd-p->iyStart+1);
+    fprintf(partFileHeader,"n3=%d\n",p->izEnd-p->izStart+1);
+    // fprintf(partFileHeader,"n4=%d\n",p->itCnt);
+    fprintf(partFileHeader,"d1=%f\n",p->dx);
+    fprintf(partFileHeader,"d2=%f\n",p->dy);
+    fprintf(partFileHeader,"d3=%f\n",p->dz);
+    fprintf(partFileHeader,"d4=%f\n",p->dt);
+    break;
+  }
+  // fclose(p->fpHead);
+  fclose(partFileHeader);
 }
 
 

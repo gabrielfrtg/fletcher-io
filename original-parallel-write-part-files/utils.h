@@ -43,6 +43,7 @@ typedef struct tsection {
   float dt;
   FILE *fpHead;
   FILE *fpBinary;
+  char fProbName[128];
   char fNameHeader[128];
   char fNameBinary[128];
 } Slice, *SlicePtr;
@@ -70,11 +71,16 @@ SlicePtr OpenSliceFile(int ixStart, int ixEnd,
 void DumpSliceFile(int sx, int sy, int sz,
 		   float *arrP, SlicePtr p);
 
+void DumpSliceFile_Parallel(int sx, int sy, int sz,
+		   float *arrP, SlicePtr p, int it);
+
 
 // CloseSliceFile: close file in RFS format that has been continuously appended
 
 
 void CloseSliceFile(SlicePtr p);
+
+void CloseSlicePartFile(SlicePtr p, char *partFileNameBin, char *partFileNameHeader);
 
 
 // DumpSliceSummary: prints info of one array 

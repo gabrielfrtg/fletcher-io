@@ -16,15 +16,16 @@ void OPENMP_Propagate(int sx, int sy, int sz, int bord,
 #undef SAMPLE_PRE_LOOP
 
 
-#pragma omp parallel
-  { // start omp
+//#pragma omp parallel
+//  { // start omp
 
     // solve both equations in all internal grid points, 
     // including absortion zone
     
     
-#pragma omp for
+//#pragma omp for
     for (int iz=bord; iz<sz-bord; iz++) {
+#pragma omp task
       for (int iy=bord; iy<sy-bord; iy++) {
 	for (int ix=bord; ix<sx-bord; ix++) {
 
@@ -37,5 +38,6 @@ void OPENMP_Propagate(int sx, int sy, int sz, int bord,
 	}
       }
     }
-  } // end omp
+    #pragma omp taskwait
+//  } // end omp
 }

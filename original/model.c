@@ -12,6 +12,17 @@
 #include "precomp.h"
 #undef MODEL_GLOBALVARS
 
+#include <time.h>
+#include <stdint.h>
+#include <inttypes.h>
+
+
+uint64_t get_timestamp_ns() {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return ((uint64_t)ts.tv_sec * 1000000000) + ts.tv_nsec;
+}
+
 
 void ReportProblemSizeCSV(const int sx, const int sy, const int sz,
 			  const int bord, const int st, 
@@ -68,7 +79,8 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 
   
   double walltime=0.0;
-  double tt1 = wtime();
+  double tdt=0.0;
+  uint64_t stamp1 = get_timestamp_ns();
 
   for (int it=1; it<=st; it++) {
 
@@ -101,6 +113,10 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 
       DRIVER_Update_pointers(sx,sy,sz,pc);
       DumpSliceFile(sx,sy,sz,pc,sPtr);
+      double dd1 = wtime();
+      tdt+=wtime()-dd1;
+      printf("dump time: %f\n", wtime()-dd1);
+
       tOut=(++nOut)*dtOutput;
 #ifdef _DUMP
       DRIVER_Update_pointers(sx,sy,sz,pc);
@@ -109,7 +125,7 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
     }
   }
 
-  double tt2 = wtime();
+  uint64_t stamp2 = get_timestamp_ns();
 
   // get HWM data
 
@@ -130,9 +146,12 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
   fclose(fp);
 
   // Dump Execution Metrics
+
+	double execution_time = ((double)(stamp2-stamp1))*1e-9;
   
+  printf("Total dump time (s): %f\n", tdt);
   printf ("Execution time (s) is %lf\n", walltime);
-  printf ("Total execution time (s) is %lf\n", tt2 - tt1);
+  printf ("Total execution time (s) is %lf\n", execution_time);
   printf ("MSamples/s %.0lf\n", MSamples);
   printf ("Memory High Water Mark is %ld %s\n",HWM, HWMUnit);
 

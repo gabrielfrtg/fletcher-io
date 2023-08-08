@@ -91,6 +91,7 @@ SlicePtr OpenSliceFile(int ixStart, int ixEnd,
 
   // header and binary file names
   
+  strcpy(ret->fName,fName);
   strcpy(ret->fNameHeader,fName);
   strcat(ret->fNameHeader,".rsf");
   strcpy(ret->fNameBinary,FNAMEBINARYPATH);
@@ -149,6 +150,25 @@ void DumpSliceFile(int sx, int sy, int sz,
 	     sizeof(float),
 	     p->ixEnd-p->ixStart+1,
 	     p->fpBinary);
+
+  // increase it count
+  
+  p->itCnt++;
+}
+
+void DumpSliceFile_Nofor(int sx, int sy, int sz,
+		   float *arrP, SlicePtr p) {
+
+//PPL  int ix, iy, iz;
+  int iy, iz;
+  int totalSize = sx * sy * sz;
+  
+  // dump section to binary file
+  
+  fwrite((void *) arrP,
+    sizeof(float),
+    totalSize,
+    p->fpBinary);
 
   // increase it count
   

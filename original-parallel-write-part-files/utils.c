@@ -91,13 +91,14 @@ SlicePtr OpenSliceFile(int ixStart, int ixEnd,
 
   // header and binary file names
   
+  strcpy(ret->fName,fName);
   strcpy(ret->fNameHeader,fName);
   strcat(ret->fNameHeader,".rsf");
   strcpy(ret->fNameBinary,FNAMEBINARYPATH);
   strcat(ret->fNameBinary,ret->fNameHeader);
   strcat(ret->fNameBinary,"@");
 
-  strcpy(ret->fProbName, fName);
+  strcpy(ret->fName, fName);
 
   // create header and binary files in rsf format
   
@@ -167,12 +168,12 @@ void DumpSliceFile_Parallel(int sx, int sy, int sz,
   // dump section to binary file
 
   char partFileName[256], partFileNameBin[256], partFileNameHeader[256];
-  sprintf(partFileName, "%s%s%d", p->fProbName, "_part_", it);
+  sprintf(partFileName, "%s%s%d", p->fName, "_part_", it);
   // sprintf(partFileNameBin, "%s%d.rsf@", "TTI_part_", it);
   sprintf(partFileNameBin, "%s%s", partFileName, ".rsf@");
   sprintf(partFileNameHeader, "%s%s", partFileName, ".rsf");
 
-  printf("filename: %s\n", partFileName);
+  // printf("filename: %s\n", partFileName);
 
   FILE* outFile = fopen(partFileNameBin, "wb");
   
@@ -190,6 +191,45 @@ void DumpSliceFile_Parallel(int sx, int sy, int sz,
        outFile);
     }
   }
+
+  fclose(outFile);
+
+  CloseSlicePartFile(p, partFileNameBin, partFileNameHeader);
+
+  // increase it count
+  
+  // p->itCnt++;
+}
+
+void DumpSliceFile_Parallel_Nofor(int sx, int sy, int sz,
+		   float *arrP, SlicePtr p, int it) {
+
+//PPL  int ix, iy, iz;
+  int iy, iz;
+  int totalSize = sx * sy * sz;
+  
+  // dump section to binary file
+
+  char partFileName[256], partFileNameBin[256], partFileNameHeader[256];
+  sprintf(partFileName, "%s%s%d", p->fName, "_part_", it);
+  // sprintf(partFileNameBin, "%s%d.rsf@", "TTI_part_", it);
+  sprintf(partFileNameBin, "%s%s", partFileName, ".rsf@");
+  sprintf(partFileNameHeader, "%s%s", partFileName, ".rsf");
+
+  // printf("filename: %s\n", partFileName);
+
+  FILE* outFile = fopen(partFileNameBin, "wb");
+  
+  if (outFile == NULL) {
+      printf("Error opening output file: %s\n", partFileNameBin);
+      // fclose(inFile);
+      return;
+  }
+  
+  fwrite((void *) arrP,
+	     sizeof(float),
+	     totalSize,
+	     outFile);
 
   fclose(outFile);
 
@@ -257,7 +297,7 @@ void CloseSlicePartFile(SlicePtr p, char *partFileNameBin, char *partFileNameHea
 
   FILE* partFileHeader = fopen(partFileNameHeader, "w");
 
-  printf("part filename: %s\n", partFileNameHeader);
+  // printf("part filename: %s\n", partFileNameHeader);
   
   if (partFileHeader == NULL) {
       printf("Error opening output file: %s\n", partFileNameHeader);

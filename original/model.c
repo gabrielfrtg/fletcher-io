@@ -45,7 +45,7 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
            const float dx, const float dy, const float dz, const float dt, const int it, 
 	   float * restrict pp, float * restrict pc, float * restrict qp, float * restrict qc,
 	   float * restrict vpz, float * restrict vsv, float * restrict epsilon, float * restrict delta,
-	   float * restrict phi, float * restrict theta)
+	   float * restrict phi, float * restrict theta, int absorb)
 {
 
   float tSim=0.0;
@@ -112,8 +112,9 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
     if (tSim >= tOut) {
 
       DRIVER_Update_pointers(sx,sy,sz,pc);
-      DumpSliceFile(sx,sy,sz,pc,sPtr);
+
       double dd1 = wtime();
+      DumpSliceFile_Nofor(sx,sy,sz,pc,sPtr);
       tdt+=wtime()-dd1;
       printf("dump time: %f\n", wtime()-dd1);
 

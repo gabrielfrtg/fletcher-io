@@ -43,6 +43,7 @@ typedef struct tsection {
   float dt;
   FILE *fpHead;
   FILE *fpBinary;
+  char fName[128];
   char fNameHeader[128];
   char fNameBinary[128];
 } Slice, *SlicePtr;
@@ -68,6 +69,9 @@ SlicePtr OpenSliceFile(int ixStart, int ixEnd,
 
 
 void DumpSliceFile(int sx, int sy, int sz,
+		   float *arrP, SlicePtr p);
+
+void DumpSliceFile_Nofor(int sx, int sy, int sz,
 		   float *arrP, SlicePtr p);
 
 

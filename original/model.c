@@ -116,7 +116,6 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
       double dd1 = wtime();
       DumpSliceFile_Nofor(sx,sy,sz,pc,sPtr);
       tdt+=wtime()-dd1;
-      printf("dump time: %f\n", wtime()-dd1);
 
       tOut=(++nOut)*dtOutput;
 #ifdef _DUMP

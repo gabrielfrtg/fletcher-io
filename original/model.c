@@ -156,6 +156,10 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
   printf ("MSamples/s %.0lf\n", MSamples);
   printf ("Memory High Water Mark is %ld %s\n",HWM, HWMUnit);
 
+  printf("original,%s,%d,%d,%d,%d,%.2f,%.2f,%.2f,%f,%f,%lu,%lu,%lf,%lf,%.0lf\n", 
+          sPtr->fName, sx - 2*bord - 2*absorb, sy - 2*bord - 2*absorb, sz - 2*bord - 2*absorb, absorb, dx, dy, dz, dt, st*dt, 
+          stamp1, stamp2, walltime, execution_time, MSamples);
+
   // Dump Execution Metrics in CSV
   
   FILE *fr=NULL;

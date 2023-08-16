@@ -113,9 +113,9 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 
       DRIVER_Update_pointers(sx,sy,sz,pc);
 
-      double dd1 = wtime();
+      // double dd1 = wtime();
       DumpSliceFile_Nofor(sx,sy,sz,pc,sPtr);
-      tdt+=wtime()-dd1;
+      // tdt+=wtime()-dd1;
 
       tOut=(++nOut)*dtOutput;
 #ifdef _DUMP
@@ -149,7 +149,7 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 
 	double execution_time = ((double)(stamp2-stamp1))*1e-9;
   
-  printf("Total dump time (s): %f\n", tdt);
+  // printf("Total dump time (s): %f\n", tdt);
   printf ("Execution time (s) is %lf\n", walltime);
   printf ("Total execution time (s) is %lf\n", execution_time);
   printf ("MSamples/s %.0lf\n", MSamples);

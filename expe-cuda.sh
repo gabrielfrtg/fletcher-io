@@ -13,7 +13,7 @@ times=(0.02 0.1 1.0)
 # Array containing the versions
 versions=("original" "original-parallel-write-single-file" "original-parallel-write-part-files")
 
-nvidia-smi --format=csv --loop-ms=100 --query-gpu=timestamp,name,uuid,pstate,memory.total,memory.used,memory.free,temperature.gpu,utilization.memory,utilization.gpu,power.management,power.draw >> gpu_power.csv &
+nvidia-smi --format=csv --loop-ms=10 --query-gpu=timestamp,name,uuid,pstate,memory.total,memory.used,memory.free,temperature.gpu,utilization.memory,utilization.gpu,power.management,power.draw >> gpu_power.csv &
 
 # Nested for-loops to iterate over sizes, times, and versions
 for round in $(seq 1 $((rounds))); do

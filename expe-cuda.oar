@@ -1,0 +1,75 @@
+#!/bin/bash
+
+#OAR -n FletcherIO
+#OAR -l host=1,walltime=13:00:00
+#OAR -p host+disk & host='sirius-1.lyon.grid5000.fr'
+#OAR -t exotic
+#OAR --stdout %jobname%-%jobid%.out
+#OAR --stderr %jobname%-%jobid%.err
+#OAR --project ufrgs
+
+# oarsub -p "host='grouille-2.nancy.grid5000.fr'" -r "2023-08-10 19:00" -l host=1,walltime=13:00 -t exotic
+
+
+echo "My job ID is $OAR_JOB_ID"
+
+
+cp -r ~/petro-ii/fletcher-io /tmp/
+cd /tmp/fletcher-io
+source ./env.sh
+./clean-all.sh
+./make-all.sh
+
+
+# Number of times to repeat the each experiment
+rounds=5
+
+# Array containing the sizes
+init_size=216
+final_size=696
+
+# Array containing the times
+times=(0.02 0.1 1.0)
+
+# Array containing the versions
+versions=("original" "original-parallel-write-single-file" "original-parallel-write-part-files")
+
+total_expe=$((rounds * (((final_size - init_size) / 32) + 1) * ${#times[@]} * ${#versions[@]}))
+
+counter=1
+init_timestamp=$(date +%s)
+estimated_time=$init_timestamp
+
+nvidia-smi --format=csv --loop-ms=10 --query-gpu=timestamp,name,uuid,pstate,memory.total,memory.used,memory.free,temperature.gpu,utilization.memory,utilization.gpu,power.management,power.draw >> gpu_power_$OAR_JOB_ID.csv &
+
+# Nested for-loops to iterate over sizes, times, and versions
+for round in $(seq 1 $((rounds))); do
+  for time in "${times[@]}"; do
+    for size in $(seq $((init_size)) 32 $((final_size))); do
+      for version in "${versions[@]}"; do
+        current_timestamp=$(date +%s)
+        elapsed=$(((current_timestamp - init_timestamp) / 60))
+        if [ $counter -gt 1 ]; then
+          eta=$(((((current_timestamp - init_timestamp) / (counter - 1)) * (total_expe - counter)) / 60))
+        else
+          eta=0
+        fi
+
+        echo "Run $counter/$total_expe (Elapsed: $elapsed min, ETA: $eta min):"
+        echo -e "\tRound: $round size: $size, time: $time, version: $version"
+
+        output=$(sudo-g5k perf stat -e power/energy-pkg/ -x, -o cpu_power.csv ./${version}/ModelagemFletcher.exe TTI $size $size $size 16 12.5 12.5 12.5 0.001 $time | grep "$version")
+        joules=$(tail -n +3 cpu_power.csv | cut -d, -f1)
+        output="$output,$joules"
+        echo -e "\t$output"
+        echo "$output" >> time_$OAR_JOB_ID.csv
+
+        counter=$((counter + 1))
+      done
+    done
+  done
+done
+
+killall nvidia-smi
+
+cp ./time_$OAR_JOB_ID.csv ./gpu_power_$OAR_JOB_ID.csv ~/petro-ii/fletcher-io/

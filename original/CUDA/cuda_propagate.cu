@@ -53,10 +53,6 @@ void CUDA_Propagate(const int sx, const int sy, const int sz, const int bord,
   extern float* dev_pc;
   extern float* dev_qp;
   extern float* dev_qc;
-  extern float* dev_pDx;
-  extern float* dev_pDy;
-  extern float* dev_qDx;
-  extern float* dev_qDy;
   
   
   dim3 threadsPerBlock(BSIZE_X, BSIZE_Y);

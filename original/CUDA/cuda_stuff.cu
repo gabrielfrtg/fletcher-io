@@ -13,10 +13,6 @@ void CUDA_Initialize(const int sx, const int sy, const int sz, const int bord,
 	       float * restrict pp, float * restrict pc, float * restrict qp, float * restrict qc)
 {
 
-   extern float* dev_pDx;
-   extern float* dev_pDy;
-   extern float* dev_qDx;
-   extern float* dev_qDy;
    extern float* dev_ch1dxx;
    extern float* dev_ch1dyy;
    extern float* dev_ch1dzz;
@@ -94,20 +90,10 @@ void CUDA_Initialize(const int sx, const int sy, const int sz, const int bord,
    dev_qp+=sxsy;
    dev_qc+=sxsy;
 
-   CUDA_CALL(cudaMalloc(&dev_pDx, msize_vol));
-   CUDA_CALL(cudaMemset(dev_pDx, 0, msize_vol));
-   CUDA_CALL(cudaMalloc(&dev_pDy, msize_vol));
-   CUDA_CALL(cudaMemset(dev_pDy, 0, msize_vol));
-   CUDA_CALL(cudaMalloc(&dev_qDx, msize_vol));
-   CUDA_CALL(cudaMemset(dev_qDx, 0, msize_vol));
-   CUDA_CALL(cudaMalloc(&dev_qDy, msize_vol));
-   CUDA_CALL(cudaMemset(dev_qDy, 0, msize_vol));
-
-
 
   CUDA_CALL(cudaGetLastError());
   CUDA_CALL(cudaDeviceSynchronize());
-  printf("GPU memory usage = %ld MiB\n", 21*msize_vol/1024/1024);
+  printf("GPU memory usage = %ld MiB\n", 15*msize_vol/1024/1024);
 
 }
 
@@ -129,10 +115,6 @@ void CUDA_Finalize()
    extern float* dev_pc;
    extern float* dev_qp;
    extern float* dev_qc;
-   extern float* dev_pDx;
-   extern float* dev_pDy;
-   extern float* dev_qDx;
-   extern float* dev_qDy;
 
    dev_pp-=sxsy;
    dev_pc-=sxsy;
@@ -153,10 +135,6 @@ void CUDA_Finalize()
    CUDA_CALL(cudaFree(dev_pc));
    CUDA_CALL(cudaFree(dev_qp));
    CUDA_CALL(cudaFree(dev_qc));
-   CUDA_CALL(cudaFree(dev_pDx));
-   CUDA_CALL(cudaFree(dev_qDx));
-   CUDA_CALL(cudaFree(dev_pDy));
-   CUDA_CALL(cudaFree(dev_qDy));
 
    printf("CUDA_Finalize: SUCCESS\n");
 }

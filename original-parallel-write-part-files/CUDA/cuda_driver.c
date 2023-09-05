@@ -8,10 +8,6 @@
 #include"cuda_insertsource.h"
 
 // Global device vars
-float* dev_pDx=NULL;
-float* dev_pDy=NULL;
-float* dev_qDx=NULL;
-float* dev_qDy=NULL;
 float* dev_ch1dxx=NULL;
 float* dev_ch1dyy=NULL;
 float* dev_ch1dzz=NULL;

@@ -17,12 +17,6 @@ void CUDA_Initialize(const int sx, const int sy, const int sz, const int bord,
    extern float* dev_pDy;
    extern float* dev_qDx;
    extern float* dev_qDy;
-   extern float* dev_vpz;
-   extern float* dev_vsv;
-   extern float* dev_epsilon;
-   extern float* dev_delta;
-   extern float* dev_phi;
-   extern float* dev_theta;
    extern float* dev_ch1dxx;
    extern float* dev_ch1dyy;
    extern float* dev_ch1dzz;
@@ -64,18 +58,7 @@ void CUDA_Initialize(const int sx, const int sy, const int sz, const int bord,
    const size_t sxsysz=sxsy*sz;
    const size_t msize_vol=sxsysz*sizeof(float);
    const size_t msize_vol_extra=msize_vol+2*sxsy*sizeof(float); // 2 extra plans for wave fields
-   CUDA_CALL(cudaMalloc(&dev_vpz, msize_vol));
-   CUDA_CALL(cudaMemcpy(dev_vpz, vpz, msize_vol, cudaMemcpyHostToDevice));
-   CUDA_CALL(cudaMalloc(&dev_vsv, msize_vol));
-   CUDA_CALL(cudaMemcpy(dev_vsv, vsv, msize_vol, cudaMemcpyHostToDevice));
-   CUDA_CALL(cudaMalloc(&dev_epsilon, msize_vol));
-   CUDA_CALL(cudaMemcpy(dev_epsilon, epsilon, msize_vol, cudaMemcpyHostToDevice));
-   CUDA_CALL(cudaMalloc(&dev_delta, msize_vol));
-   CUDA_CALL(cudaMemcpy(dev_delta, delta, msize_vol, cudaMemcpyHostToDevice));
-   CUDA_CALL(cudaMalloc(&dev_phi, msize_vol));
-   CUDA_CALL(cudaMemcpy(dev_phi, phi, msize_vol, cudaMemcpyHostToDevice));
-   CUDA_CALL(cudaMalloc(&dev_theta, msize_vol));
-   CUDA_CALL(cudaMemcpy(dev_theta, theta, msize_vol, cudaMemcpyHostToDevice));
+
    CUDA_CALL(cudaMalloc(&dev_ch1dxx, msize_vol));
    CUDA_CALL(cudaMemcpy(dev_ch1dxx, ch1dxx, msize_vol, cudaMemcpyHostToDevice));
    CUDA_CALL(cudaMalloc(&dev_ch1dyy, msize_vol));
@@ -132,12 +115,6 @@ void CUDA_Initialize(const int sx, const int sy, const int sz, const int bord,
 void CUDA_Finalize()
 {
 
-   extern float* dev_vpz;
-   extern float* dev_vsv;
-   extern float* dev_epsilon;
-   extern float* dev_delta;
-   extern float* dev_phi;
-   extern float* dev_theta;
    extern float* dev_ch1dxx;
    extern float* dev_ch1dyy;
    extern float* dev_ch1dzz;
@@ -162,12 +139,6 @@ void CUDA_Finalize()
    dev_qp-=sxsy;
    dev_qc-=sxsy;
 
-   CUDA_CALL(cudaFree(dev_vpz));
-   CUDA_CALL(cudaFree(dev_vsv));
-   CUDA_CALL(cudaFree(dev_epsilon));
-   CUDA_CALL(cudaFree(dev_delta));
-   CUDA_CALL(cudaFree(dev_phi));
-   CUDA_CALL(cudaFree(dev_theta));
    CUDA_CALL(cudaFree(dev_ch1dxx));
    CUDA_CALL(cudaFree(dev_ch1dyy));
    CUDA_CALL(cudaFree(dev_ch1dzz));

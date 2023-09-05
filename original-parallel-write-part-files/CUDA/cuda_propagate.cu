@@ -39,12 +39,6 @@ void CUDA_Propagate(const int sx, const int sy, const int sz, const int bord,
 		    float * restrict pp, float * restrict pc, float * restrict qp, float * restrict qc)
 {
   
-  extern float* dev_vpz;
-  extern float* dev_vsv;
-  extern float* dev_epsilon;
-  extern float* dev_delta;
-  extern float* dev_phi;
-  extern float* dev_theta;
   extern float* dev_ch1dxx;
   extern float* dev_ch1dyy;
   extern float* dev_ch1dzz;

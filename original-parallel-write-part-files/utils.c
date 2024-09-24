@@ -207,11 +207,21 @@ void DumpSliceFile_Parallel_Nofor(int sx, int sy, int sz,
 //PPL  int ix, iy, iz;
   int iy, iz;
   int totalSize = sx * sy * sz;
+
+  char diskpath[256];
+
+  if (getenv("DISKP1") != NULL) {
+    strcpy(diskpath, getenv("DISKP1"));
+  } else {
+    strcpy(diskpath, "./");
+  }
+
+  // printf("Disk path: %s\n", diskpath);
   
   // dump section to binary file
 
   char partFileName[256], partFileNameBin[256], partFileNameHeader[256];
-  sprintf(partFileName, "%s%s%d", p->fName, "_part_", it);
+  sprintf(partFileName, "%s%s%s%d", diskpath, p->fName, "_part_", it);
   // sprintf(partFileNameBin, "%s%d.rsf@", "TTI_part_", it);
   sprintf(partFileNameBin, "%s%s", partFileName, ".rsf@");
   sprintf(partFileNameHeader, "%s%s", partFileName, ".rsf");

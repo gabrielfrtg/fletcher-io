@@ -89,14 +89,29 @@ SlicePtr OpenSliceFile(int ixStart, int ixEnd,
     ret->direction=FULL;
   }
 
+  char diskpath[256], fFullName[256];
+
+  if (getenv("DISKP1") != NULL) {
+    strcpy(diskpath, getenv("DISKP1"));
+  } else {
+    strcpy(diskpath, "./");
+  }
+
+  sprintf(fFullName, "%s%s", diskpath, fName);
+
+  // printf("Disk path: %s\n", fFullName);
+
   // header and binary file names
   
-  strcpy(ret->fName,fName);
-  strcpy(ret->fNameHeader,fName);
+  strcpy(ret->fName,fFullName);
+  strcpy(ret->fNameHeader,fFullName);
   strcat(ret->fNameHeader,".rsf");
-  strcpy(ret->fNameBinary,FNAMEBINARYPATH);
+  // strcpy(ret->fNameBinary,FNAMEBINARYPATH);
   strcat(ret->fNameBinary,ret->fNameHeader);
   strcat(ret->fNameBinary,"@");
+
+  // printf("Header path: %s\n", ret->fNameHeader);
+  // printf("Binary path: %s\n", ret->fNameBinary);
 
   // create header and binary files in rsf format
   

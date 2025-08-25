@@ -45,6 +45,12 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64
 #export CUDA_GPU_SM=sm_37 # NVIDIA K80
 #export CUDA_GPU_SM=sm_60 # NVIDIA P100
 #export CUDA_GPU_SM=sm_61 # NVIDIA GTX 1080Ti
-#export CUDA_GPU_SM=sm_75 # NVIDIA RTX 2080Ti
+export CUDA_GPU_SM=sm_75 # NVIDIA RTX 2080Ti
 #export CUDA_GPU_SM=sm_80 # NVIDIA A100
-export CUDA_GPU_SM=sm_86 # NVIDIA RTX A1000
+# export CUDA_GPU_SM=sm_86 # NVIDIA RTX A1000
+
+# NVCOMP paths
+export NVCOMP_ROOT="/home/gfreytag/devel/fletcher-io-nvcomp/nvcomp-linux-x86_64-5.0.0.6_cuda12-archive"
+export CPATH="$NVCOMP_ROOT/include:$CPATH"
+export LIBRARY_PATH="$NVCOMP_ROOT/lib:$LIBRARY_PATH"
+export LD_LIBRARY_PATH="$NVCOMP_ROOT/lib:$LD_LIBRARY_PATH"

@@ -221,7 +221,7 @@ void CloseSliceFile(SlicePtr p){
     break;
   }
   fclose(p->fpHead);
-  fclose(p->fpBinary);
+  // fclose(p->fpBinary);
 }
 
 

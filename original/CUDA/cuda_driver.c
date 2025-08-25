@@ -83,3 +83,28 @@ void DRIVER_InsertSource(float dt, int it, int iSource, float *p, float*q, float
 	CUDA_InsertSource(src, iSource, p, q);
 }
 
+
+// void CUDA_Get_compressed_checkpoint(const int sx, const int sy, const int sz,
+//                                     void** compressed_data, size_t* compressed_size);
+
+void DRIVER_Get_compressed_checkpoint(const int sx, const int sy, const int sz,
+                                      void** compressed_data, size_t* compressed_size)
+{
+    CUDA_Get_compressed_checkpoint(sx, sy, sz, compressed_data, compressed_size);
+}
+
+int DRIVER_Decompress_last(const int sx, const int sy, const int sz,
+						   float* host_compressed, size_t compressed_size)
+{
+	return CUDA_Decompress_to_pc(host_compressed, compressed_size, sx, sy, sz);
+}
+
+void DRIVER_Decompress_checkpoint_file(const char* infile,
+									   const char* out_header,
+									   const char* out_data,
+									   int sx, int sy, int sz, int bord, int absorb,
+									   float dx, float dy, float dz, float dt_output)
+{
+	CUDA_DecompressCheckpointFile(infile, out_header, out_data,
+		sx, sy, sz, bord, absorb, dx, dy, dz, dt_output);
+}

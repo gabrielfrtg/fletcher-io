@@ -18,6 +18,22 @@ void CUDA_Finalize();
 
 void CUDA_Update_pointers(const int sx, const int sy, const int sz, float *pc);
 
+void CUDA_Get_compressed_checkpoint(const int sx, const int sy, const int sz,
+                                    void** compressed_data, size_t* compressed_size);
+
+// Decompress a compressed checkpoint (device buffer still lives in compression context)
+// compressed_data must point to device buffer containing compressed data (currently we store only on host)
+// For now, provide function to decompress last compressed buffer from host copy.
+int CUDA_Decompress_to_pc(float* host_compressed, size_t compressed_size,
+                          const int sx, const int sy, const int sz);
+
+// Decompress all checkpoints from a compressed file (produces raw binary outputs per iteration)
+void CUDA_DecompressCheckpointFile(const char* infile,
+                                   const char* out_header,
+                                   const char* out_data,
+                                   int sx, int sy, int sz, int bord, int absorb,
+                                   float dx, float dy, float dz, float dt_output);
+
 #ifdef __cplusplus
 }
 #endif

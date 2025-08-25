@@ -3,4 +3,4 @@
 **/*.rsf
 TTI*
 **/*.swp
-
+**/nvcomp-linux*

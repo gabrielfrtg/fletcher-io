@@ -1,6 +1,7 @@
 #include "cuda_defines.h"
 #include <cuda_runtime.h>
-#include <nvcomp/gdeflate.hpp>
+#include <nvcomp/lz4.hpp>
+#include <nvcomp/lz4.h>
 #include <nvcomp.hpp>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +40,7 @@ extern "C" void CUDA_InitCompression(size_t max_uncompressed_size, int compressi
     g_comp_ctx.h_compressed_buffer = malloc(g_comp_ctx.h_compressed_buffer_size);
     
     g_comp_ctx.initialized = 1;
-    printf("nvcomp compression initialized (level=%d, buffer=%.2f MB)\n", 
+    printf("nvcomp LZ4 compression initialized (level=%d, buffer=%.2f MB)\n", 
            compression_level, g_comp_ctx.compressed_buffer_size/(1024.0*1024.0));
 }
 
@@ -55,19 +56,18 @@ extern "C" size_t CUDA_CompressWavefield(
     
     size_t uncompressed_bytes = num_elements * sizeof(float);
     
-    // Prepare nvCOMP compression options (algorithm maps from compression_level)
-    nvcompBatchedGdeflateCompressOpts_t comp_opts = nvcompBatchedGdeflateCompressDefaultOpts;
-    comp_opts.algorithm = g_comp_ctx.compression_level; // caller ensures 0-5 range
+    // Prepare nvCOMP LZ4 compression options (we ignore compression_level for now)
+    nvcompBatchedLZ4CompressOpts_t comp_opts = nvcompBatchedLZ4CompressDefaultOpts;
 
     // Choose chunk size (use 64KB unless data is smaller)
     size_t chunk_size = 64 * 1024;
     if (uncompressed_bytes < chunk_size) chunk_size = uncompressed_bytes ? uncompressed_bytes : 64 * 1024;
 
     // Instantiate manager (bitstream kind NVCOMP_NATIVE so we can query size later)
-    nvcomp::GdeflateManager manager(
+    nvcomp::LZ4Manager manager(
         chunk_size,
         comp_opts,
-        nvcompBatchedGdeflateDecompressDefaultOpts,
+        nvcompBatchedLZ4DecompressDefaultOpts,
         g_comp_ctx.stream,
         nvcomp::NoComputeNoVerify,
         nvcomp::BitstreamKind::NVCOMP_NATIVE);
@@ -123,12 +123,12 @@ extern "C" int CUDA_DecompressWavefield(
     }
 
     // We'll create a temporary manager just to parse the header and decompress
-    nvcompBatchedGdeflateCompressOpts_t comp_opts = nvcompBatchedGdeflateCompressDefaultOpts;
+    nvcompBatchedLZ4CompressOpts_t comp_opts = nvcompBatchedLZ4CompressDefaultOpts;
     size_t chunk_size = 64 * 1024;
-    nvcomp::GdeflateManager manager(
+    nvcomp::LZ4Manager manager(
         chunk_size,
         comp_opts,
-        nvcompBatchedGdeflateDecompressDefaultOpts,
+        nvcompBatchedLZ4DecompressDefaultOpts,
         g_comp_ctx.stream,
         nvcomp::NoComputeNoVerify,
         nvcomp::BitstreamKind::NVCOMP_NATIVE);

@@ -6,6 +6,9 @@
 #include"cuda_stuff.h"
 #include"cuda_propagate.h"
 #include"cuda_insertsource.h"
+#ifdef USE_NVCOMP
+#include"cuda_compression.h"
+#endif
 
 // Global device vars
 float* dev_ch1dxx=NULL;
@@ -84,9 +87,7 @@ void DRIVER_InsertSource(float dt, int it, int iSource, float *p, float*q, float
 }
 
 
-// void CUDA_Get_compressed_checkpoint(const int sx, const int sy, const int sz,
-//                                     void** compressed_data, size_t* compressed_size);
-
+#ifdef USE_NVCOMP
 void DRIVER_Get_compressed_checkpoint(const int sx, const int sy, const int sz,
                                       void** compressed_data, size_t* compressed_size)
 {
@@ -108,3 +109,4 @@ void DRIVER_Decompress_checkpoint_file(const char* infile,
 	CUDA_DecompressCheckpointFile(infile, out_header, out_data,
 		sx, sy, sz, bord, absorb, dx, dy, dz, dt_output);
 }
+#endif

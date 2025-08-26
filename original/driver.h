@@ -21,6 +21,7 @@ void DRIVER_Update_pointers(const int sx, const int sy, const int sz, float *pc)
 
 void DRIVER_InsertSource(float dt, int it, int iSource, float *p, float*q, float src);
 
+#ifdef USE_NVCOMP
 void DRIVER_Get_compressed_checkpoint(const int sx, const int sy, const int sz,
                                       void** compressed_data, size_t* compressed_size);
 
@@ -32,6 +33,7 @@ void DRIVER_Decompress_checkpoint_file(const char* infile,
 									   const char* out_data,
 									   int sx, int sy, int sz, int bord, int absorb,
 									   float dx, float dy, float dz, float dt_output);
+#endif
 
 #ifdef __cplusplus
 }

@@ -70,15 +70,13 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 #include "precomp.h"
 #undef MODEL_INITIALIZE
 
+#ifdef USE_NVCOMP
   FILE* checkpoint_file = NULL;
-  int save_compressed = 1;  // Set to 1 to enable compression
-  if (save_compressed) {
-      checkpoint_file = fopen("checkpoints_compressed.bin", "wb");
-      if (!checkpoint_file) {
-          printf("Warning: Cannot open compressed checkpoint file\n");
-          save_compressed = 0;
-      }
+  checkpoint_file = fopen("checkpoints_compressed.bin", "wb");
+  if (!checkpoint_file) {
+    printf("Warning: Cannot open compressed checkpoint file\n");
   }
+#endif
 
   // DRIVER_Initialize initialize target, allocate data etc
   DRIVER_Initialize(sx,   sy,   sz,   bord,
@@ -87,6 +85,44 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 		      phi,    theta,
 		      pp,    pc,    qp,    qc);
 
+#ifdef USE_NVCOMP
+      if (checkpoint_file) {
+          void* compressed_data = NULL;
+          size_t compressed_size = 0;
+          
+          // Get compressed checkpoint directly from GPU
+          DRIVER_Get_compressed_checkpoint(sx, sy, sz, &compressed_data, &compressed_size);
+          
+          if (compressed_size > 0 && compressed_data != NULL) {
+              // Write checkpoint header
+              typedef struct {
+                  int iteration;
+                  int nx, ny, nz;
+                  size_t original_size;
+                  size_t compressed_size;
+                  float timestamp;
+              } CheckpointHeader;
+              
+              CheckpointHeader header;
+              header.iteration = it;
+              header.nx = sx - 2*bord - 2*absorb;
+              header.ny = sy - 2*bord - 2*absorb;
+              header.nz = sz - 2*bord - 2*absorb;
+              header.original_size = ((size_t)sx*sy)*sz * sizeof(float);
+              header.compressed_size = compressed_size;
+              header.timestamp = tSim;
+              
+              // Write header and compressed data
+              fwrite(&header, sizeof(CheckpointHeader), 1, checkpoint_file);
+              fwrite(compressed_data, 1, compressed_size, checkpoint_file);
+              fflush(checkpoint_file);
+          }
+      } else {
+        // fallback
+        DRIVER_Update_pointers(sx,sy,sz,pc);
+        DumpSliceFile_Nofor(sx,sy,sz,pc,sPtr);
+      }
+#endif
   
   double walltime=0.0;
   double tdt=0.0;
@@ -120,8 +156,8 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 
     tSim=it*dt;
     if (tSim >= tOut) {
-      // Save compressed checkpoint if enabled
-      if (save_compressed && checkpoint_file) {
+#ifdef USE_NVCOMP
+      if (checkpoint_file) {
           void* compressed_data = NULL;
           size_t compressed_size = 0;
           
@@ -153,25 +189,38 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
               fflush(checkpoint_file);
           }
       } else {
-        // Still update for regular visualization
+#endif
         DRIVER_Update_pointers(sx,sy,sz,pc);
+
+        // double dd1 = wtime();
         DumpSliceFile_Nofor(sx,sy,sz,pc,sPtr);
+        // tdt+=wtime()-dd1;
+#ifdef USE_NVCOMP
       }
+#endif
       
       tOut=(++nOut)*dtOutput;
+#ifdef _DUMP
+      DRIVER_Update_pointers(sx,sy,sz,pc);
+      //      DumpSliceSummary(sx,sy,sz,sPtr,dt,it,pc,src);
+#endif
     }
   }
 
+#ifdef USE_NVCOMP
   if (checkpoint_file) {
   fclose(checkpoint_file);
   } else {
+#endif
   fclose(sPtr->fpBinary);
+#ifdef USE_NVCOMP
   }
+#endif
 
+#ifdef USE_NVCOMP
   // Optional: decompress entire checkpoint file after it is closed (file-level)
   // Enable with environment variable DECOMPRESS_FILE=1
-  if (save_compressed) {
-    const char* decomp_file_env = getenv("DECOMPRESS_FILE");
+  const char* decomp_file_env = getenv("DECOMPRESS_FILE");
   if (decomp_file_env && atoi(decomp_file_env) != 0) {
     DRIVER_Decompress_checkpoint_file(
       "checkpoints_compressed.bin",
@@ -179,8 +228,8 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
       "checkpoints_decompressed.rsf@",
       sx, sy, sz, bord, absorb,
       dx, dy, dz, dtOutput);
-    }
   }
+#endif
 
   uint64_t stamp2 = get_timestamp_ns();
 

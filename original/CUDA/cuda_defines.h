@@ -11,11 +11,6 @@
 
 #include <stdio.h>
 
-#ifdef USE_NVCOMP
-#include <nvcomp/gdeflate.hpp>
-#include <nvcomp.hpp>
-#endif
-
 #define CUDA_CALL(call) do{      \
    const cudaError_t err=call;         \
    if (err != cudaSuccess)       \

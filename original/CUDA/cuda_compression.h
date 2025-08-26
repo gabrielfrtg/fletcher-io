@@ -9,15 +9,21 @@ extern "C" {
 // compression_level: 0=fast, 1=default, 2=high compression
 void CUDA_InitCompression(size_t max_uncompressed_size, int compression_level);
 
-// Compress wavefield data on GPU using high-level API
-// Returns compressed size, 0 on error
-size_t CUDA_CompressWavefield(float* d_wavefield, size_t num_elements, void** h_compressed_output);
+void CUDA_Get_compressed_checkpoint(const int sx, const int sy, const int sz,
+                                    void** compressed_data, size_t* compressed_size);
 
-// Alternative: Compress using low-level API (simpler, may be more stable)
-size_t CUDA_CompressWavefield_LowLevel(float* d_wavefield, size_t num_elements, void** h_compressed_output);
+// Decompress a compressed checkpoint (device buffer still lives in compression context)
+// compressed_data must point to device buffer containing compressed data (currently we store only on host)
+// For now, provide function to decompress last compressed buffer from host copy.
+int CUDA_Decompress_to_pc(float* host_compressed, size_t compressed_size,
+                          const int sx, const int sy, const int sz);
 
-// Decompress previously compressed buffer into provided device wavefield buffer
-int CUDA_DecompressWavefield(const void* d_compressed_buffer, float* d_output_wavefield, size_t expected_num_elements);
+// Decompress all checkpoints from a compressed file (produces raw binary outputs per iteration)
+void CUDA_DecompressCheckpointFile(const char* infile,
+                                   const char* out_header,
+                                   const char* out_data,
+                                   int sx, int sy, int sz, int bord, int absorb,
+                                   float dx, float dy, float dz, float dt_output);
 
 // Cleanup compression resources
 void CUDA_FinalizeCompression();

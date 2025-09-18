@@ -296,6 +296,4 @@ int main(int argc, char** argv) {
         pp,     pc,      qp,       qc,
 	vpz,    vsv,     epsilon,  delta,
 	phi,    theta, absorb);
-
-  CloseSliceFile(sPtr);
 }

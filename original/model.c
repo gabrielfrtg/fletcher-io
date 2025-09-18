@@ -125,6 +125,9 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
     }
   }
 
+  // close binary output file before measuring time to include total io time
+  CloseSliceFile(sPtr);
+
   uint64_t stamp2 = get_timestamp_ns();
 
   // get HWM data

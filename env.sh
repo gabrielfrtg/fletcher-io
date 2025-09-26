@@ -54,3 +54,6 @@ export NVCOMP_ROOT="/home/gfreytag/devel/fletcher-io-nvcomp/nvcomp-linux-x86_64-
 export CPATH="$NVCOMP_ROOT/include:$CPATH"
 export LIBRARY_PATH="$NVCOMP_ROOT/lib:$LIBRARY_PATH"
 export LD_LIBRARY_PATH="$NVCOMP_ROOT/lib:$LD_LIBRARY_PATH"
+
+# hipCOMP paths (set HIPCOMP_ROOT to your installation to enable USE_HIPCOMP)
+# export HIPCOMP_ROOT="/opt/rocm/hipcomp-core"

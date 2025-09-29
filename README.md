@@ -34,7 +34,9 @@ pointing the build to an installed hipCOMP-core tree:
 
 ```bash
 make clean
-make -j backend=HIP USE_HIPCOMP=1 HIPCOMP_ROOT=/opt/rocm/hipcomp-core
+# Override ROCM_PATH if hipconfig cannot detect your installation automatically.
+ROCM_PATH=/opt/rocm-7.0.1 \
+  make -j backend=HIP USE_HIPCOMP=1 HIPCOMP_ROOT=/opt/rocm/hipcomp-core
 ```
 
 See [`docs/hip_backend.md`](docs/hip_backend.md) for an architectural overview

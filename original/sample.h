@@ -1,7 +1,7 @@
 #ifdef SAMPLE_PRE_LOOP
 // START SAMPLE_PRE_LOOP
 
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC__)
 extern float* ch1dxx;
 extern float* ch1dyy;
 extern float* ch1dzz;

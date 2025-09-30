@@ -35,7 +35,10 @@ checkpoints_decompressed.rsf@
 
 ### Build
 ```bash
-make clean ; make -j USE_HIPCOMP=1 BACKEND=HIP
+export HIPCOMP_ROOT=/path/to/hipCOMP-core/install
+export LD_LIBRARY_PATH="$HIPCOMP_ROOT/lib:$LD_LIBRARY_PATH"
+export CPATH="$HIPCOMP_ROOT/include:$CPATH"
+make clean ; make -j BACKEND=HIP USE_HIPCOMP=1
 ```
 
 ### Execute with file decompression

@@ -12,34 +12,33 @@
 #  if __has_include(<hipcomp/lz4.hpp>)
 #    include <hipcomp/lz4.hpp>
 #    include <hipcomp/lz4.h>
-#    include <hipcomp.hpp>
+#    include <hipcomp/hipcompManager.hpp>
+#    include <hipcomp/hipcompManagerFactory.hpp>
+#    define FLETCHER_COMP_BACKEND_HIPCOMP 1
      namespace hipcompns = hipcomp;
-     using hipcompBatchedLZ4CompressOpts_t_alias = hipcompBatchedLZ4CompressOpts_t;
-     using hipcompBatchedLZ4DecompressOpts_t_alias = hipcompBatchedLZ4DecompressOpts_t;
-     static const hipcompBatchedLZ4CompressOpts_t_alias hipcompDefaultCompOpts = hipcompBatchedLZ4CompressDefaultOpts;
-     static const hipcompBatchedLZ4DecompressOpts_t_alias hipcompDefaultDecompOpts = hipcompBatchedLZ4DecompressDefaultOpts;
 #  elif __has_include(<nvcomp/lz4.hpp>)
 #    include <nvcomp/lz4.hpp>
 #    include <nvcomp/lz4.h>
 #    include <nvcomp.hpp>
+#    define FLETCHER_COMP_BACKEND_NVCOMP 1
      namespace hipcompns = nvcomp;
-     using hipcompBatchedLZ4CompressOpts_t_alias = nvcompBatchedLZ4CompressOpts_t;
-     using hipcompBatchedLZ4DecompressOpts_t_alias = nvcompBatchedLZ4DecompressOpts_t;
-     static const hipcompBatchedLZ4CompressOpts_t_alias hipcompDefaultCompOpts = nvcompBatchedLZ4CompressDefaultOpts;
-     static const hipcompBatchedLZ4DecompressOpts_t_alias hipcompDefaultDecompOpts = nvcompBatchedLZ4DecompressDefaultOpts;
 #  else
 #    error "Neither hipcomp nor nvcomp LZ4 headers are available"
 #  endif
 #else
 #  include <hipcomp/lz4.hpp>
 #  include <hipcomp/lz4.h>
-#  include <hipcomp.hpp>
+#  include <hipcomp/hipcompManager.hpp>
+#  include <hipcomp/hipcompManagerFactory.hpp>
+#  define FLETCHER_COMP_BACKEND_HIPCOMP 1
    namespace hipcompns = hipcomp;
-   using hipcompBatchedLZ4CompressOpts_t_alias = hipcompBatchedLZ4CompressOpts_t;
-   using hipcompBatchedLZ4DecompressOpts_t_alias = hipcompBatchedLZ4DecompressOpts_t;
-   static const hipcompBatchedLZ4CompressOpts_t_alias hipcompDefaultCompOpts = hipcompBatchedLZ4CompressDefaultOpts;
-   static const hipcompBatchedLZ4DecompressOpts_t_alias hipcompDefaultDecompOpts = hipcompBatchedLZ4DecompressDefaultOpts;
 #endif
+
+using hipcompBatchedLZ4CompressOpts_t_alias = hipcompBatchedLZ4CompressOpts_t;
+using hipcompBatchedLZ4DecompressOpts_t_alias = hipcompBatchedLZ4DecompressOpts_t;
+
+static const hipcompBatchedLZ4CompressOpts_t_alias hipcompDefaultCompOpts = hipcompBatchedLZ4CompressDefaultOpts;
+static const hipcompBatchedLZ4DecompressOpts_t_alias hipcompDefaultDecompOpts = hipcompBatchedLZ4DecompressDefaultOpts;
 
 typedef struct {
     void* d_compressed_buffer;
@@ -90,6 +89,7 @@ static size_t CUDA_CompressWavefield(
     size_t chunk_size = 64 * 1024;
     if (uncompressed_bytes < chunk_size) chunk_size = uncompressed_bytes ? uncompressed_bytes : 64 * 1024;
 
+#if defined(FLETCHER_COMP_BACKEND_NVCOMP)
     hipcompns::LZ4Manager manager(
         chunk_size,
         comp_opts,
@@ -97,6 +97,13 @@ static size_t CUDA_CompressWavefield(
         g_comp_ctx.stream,
         hipcompns::NoComputeNoVerify,
         hipcompns::BitstreamKind::NVCOMP_NATIVE);
+#else
+    hipcompns::LZ4Manager manager(
+        chunk_size,
+        comp_opts,
+        hipcompDefaultDecompOpts,
+        g_comp_ctx.stream);
+#endif
 
     hipcompns::CompressionConfig comp_config = manager.configure_compression(uncompressed_bytes);
 
@@ -147,6 +154,7 @@ static int CUDA_DecompressWavefield(
 
     hipcompBatchedLZ4CompressOpts_t_alias comp_opts = hipcompDefaultCompOpts;
     size_t chunk_size = 64 * 1024;
+#if defined(FLETCHER_COMP_BACKEND_NVCOMP)
     hipcompns::LZ4Manager manager(
         chunk_size,
         comp_opts,
@@ -154,6 +162,13 @@ static int CUDA_DecompressWavefield(
         g_comp_ctx.stream,
         hipcompns::NoComputeNoVerify,
         hipcompns::BitstreamKind::NVCOMP_NATIVE);
+#else
+    hipcompns::LZ4Manager manager(
+        chunk_size,
+        comp_opts,
+        hipcompDefaultDecompOpts,
+        g_comp_ctx.stream);
+#endif
 
     auto decomp_config = manager.configure_decompression(
         reinterpret_cast<const uint8_t*>(d_compressed_buffer));

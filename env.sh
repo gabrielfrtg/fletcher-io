@@ -54,3 +54,9 @@ export NVCOMP_ROOT="/home/gfreytag/devel/fletcher-io-nvcomp/nvcomp-linux-x86_64-
 export CPATH="$NVCOMP_ROOT/include:$CPATH"
 export LIBRARY_PATH="$NVCOMP_ROOT/lib:$LIBRARY_PATH"
 export LD_LIBRARY_PATH="$NVCOMP_ROOT/lib:$LD_LIBRARY_PATH"
+
+# HIPCOMP paths (AMD HIP GPU compression)
+export HIPCOMP_ROOT="${HIPCOMP_ROOT:-/opt/rocm/hipcomp-core}"
+export CPATH="$HIPCOMP_ROOT/include:$CPATH"
+export LIBRARY_PATH="$HIPCOMP_ROOT/lib:$LIBRARY_PATH"
+export LD_LIBRARY_PATH="$HIPCOMP_ROOT/lib:$LD_LIBRARY_PATH"

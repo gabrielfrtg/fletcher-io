@@ -21,7 +21,7 @@ void DRIVER_Update_pointers(const int sx, const int sy, const int sz, float *pc)
 
 void DRIVER_InsertSource(float dt, int it, int iSource, float *p, float*q, float src);
 
-#ifdef USE_NVCOMP
+#if defined(USE_NVCOMP) || defined(USE_HIPCOMP)
 void DRIVER_Get_compressed_checkpoint(const int sx, const int sy, const int sz,
                                       void** compressed_data, size_t* compressed_size);
 

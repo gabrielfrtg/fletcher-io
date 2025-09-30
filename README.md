@@ -30,3 +30,26 @@ checkpoints_compressed.bin
 checkpoints_decompressed.rsf
 checkpoints_decompressed.rsf@
 ```
+
+## AMD HIPCOMP Support
+
+### Build
+```bash
+make clean ; make -j USE_HIPCOMP=1 BACKEND=HIP
+```
+
+### Execute with file decompression
+```bash
+DECOMPRESS_FILE=1 ./ModelagemFletcher.exe TTI 312 312 312 16 12.5 12.5 12.5 0.001 0.1
+```
+
+#### Compressed file
+```bash
+checkpoints_compressed.bin
+```
+
+#### Decompressed files
+```bash
+checkpoints_decompressed.rsf
+checkpoints_decompressed.rsf@
+```

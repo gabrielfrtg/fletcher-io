@@ -90,6 +90,33 @@ static const uint16_t kHipcompVersion = 1u;
 
 static CompressionContext g_comp_ctx = {0};
 
+static void ensure_device_buffer_size(void** device_ptr,
+                                      size_t* current_bytes,
+                                      size_t required_bytes,
+                                      const char* label)
+{
+  if (*current_bytes >= required_bytes) return;
+
+  if (*device_ptr) {
+    CUDA_CALL(hipFree(*device_ptr));
+  }
+
+  if (required_bytes == 0) {
+    *device_ptr = NULL;
+    *current_bytes = 0;
+    return;
+  }
+
+  CUDA_CALL(hipMalloc(device_ptr, required_bytes));
+  *current_bytes = required_bytes;
+
+  if (label) {
+    printf("hipCOMP resized %s buffer to %.2f MB\n",
+           label,
+           required_bytes / (1024.0 * 1024.0));
+  }
+}
+
 static void ensure_host_capacity(size_t required_bytes)
 {
   if (g_comp_ctx.h_compressed_buffer_size >= required_bytes) return;
@@ -133,72 +160,57 @@ static void ensure_chunk_resources(size_t chunk_size, size_t required_chunks)
     required_chunks = 1;
   }
 
-  const bool chunk_changed = (g_comp_ctx.chunk_size != chunk_size);
-  const bool need_more_chunks = (required_chunks > g_comp_ctx.max_chunks);
-
-  if (!chunk_changed && !need_more_chunks && g_comp_ctx.max_chunks != 0) {
-    return;
-  }
-
   hipcompBatchedLZ4Opts_t opts = HIPCOMP_BatchedLZ4DefaultOpts;
 
-  g_comp_ctx.chunk_size = chunk_size;
+  const bool first_initialization = (g_comp_ctx.max_chunks == 0);
+  const bool chunk_changed = (g_comp_ctx.chunk_size != chunk_size);
 
-  HIPCOMP_CALL(hipcompBatchedLZ4CompressGetMaxOutputChunkSize(
-      g_comp_ctx.chunk_size, opts, &g_comp_ctx.max_chunk_output_size));
-
-  size_t new_max_chunks = required_chunks;
-  if (new_max_chunks < 1) new_max_chunks = 1;
-
-  size_t comp_temp_bytes = 0;
-  HIPCOMP_CALL(hipcompBatchedLZ4CompressGetTempSize(
-      new_max_chunks, g_comp_ctx.chunk_size, opts, &comp_temp_bytes));
-  if (g_comp_ctx.d_comp_temp) {
-    CUDA_CALL(hipFree(g_comp_ctx.d_comp_temp));
+  if (first_initialization || chunk_changed) {
+    g_comp_ctx.chunk_size = chunk_size;
+    HIPCOMP_CALL(hipcompBatchedLZ4CompressGetMaxOutputChunkSize(
+        g_comp_ctx.chunk_size, opts, &g_comp_ctx.max_chunk_output_size));
   }
-  CUDA_CALL(hipMalloc(&g_comp_ctx.d_comp_temp, comp_temp_bytes));
-  g_comp_ctx.comp_temp_bytes = comp_temp_bytes;
 
-  size_t decomp_temp_bytes = 0;
-  HIPCOMP_CALL(hipcompBatchedLZ4DecompressGetTempSize(
-      new_max_chunks, g_comp_ctx.chunk_size, &decomp_temp_bytes));
-  if (g_comp_ctx.d_decomp_temp) {
-    CUDA_CALL(hipFree(g_comp_ctx.d_decomp_temp));
+  size_t new_capacity = g_comp_ctx.max_chunks;
+  if (new_capacity < required_chunks) {
+    new_capacity = required_chunks;
   }
-  CUDA_CALL(hipMalloc(&g_comp_ctx.d_decomp_temp, decomp_temp_bytes));
-  g_comp_ctx.decomp_temp_bytes = decomp_temp_bytes;
+  if (new_capacity == 0) {
+    new_capacity = 1;
+  }
 
-  g_comp_ctx.h_uncomp_ptrs = (void**)host_realloc_checked(
-      g_comp_ctx.h_uncomp_ptrs, new_max_chunks * sizeof(void*), "uncompressed pointer table");
-  g_comp_ctx.h_comp_ptrs = (void**)host_realloc_checked(
-      g_comp_ctx.h_comp_ptrs, new_max_chunks * sizeof(void*), "compressed pointer table");
-  g_comp_ctx.h_uncomp_sizes = (size_t*)host_realloc_checked(
-      g_comp_ctx.h_uncomp_sizes, new_max_chunks * sizeof(size_t), "uncompressed size table");
-  g_comp_ctx.h_comp_sizes = (size_t*)host_realloc_checked(
-      g_comp_ctx.h_comp_sizes, new_max_chunks * sizeof(size_t), "compressed size table");
+  if (first_initialization || chunk_changed || new_capacity != g_comp_ctx.max_chunks) {
+    g_comp_ctx.h_uncomp_ptrs = (void**)host_realloc_checked(
+        g_comp_ctx.h_uncomp_ptrs, new_capacity * sizeof(void*), "uncompressed pointer table");
+    g_comp_ctx.h_comp_ptrs = (void**)host_realloc_checked(
+        g_comp_ctx.h_comp_ptrs, new_capacity * sizeof(void*), "compressed pointer table");
+    g_comp_ctx.h_uncomp_sizes = (size_t*)host_realloc_checked(
+        g_comp_ctx.h_uncomp_sizes, new_capacity * sizeof(size_t), "uncompressed size table");
+    g_comp_ctx.h_comp_sizes = (size_t*)host_realloc_checked(
+        g_comp_ctx.h_comp_sizes, new_capacity * sizeof(size_t), "compressed size table");
+    g_comp_ctx.h_actual_uncomp_sizes = (size_t*)host_realloc_checked(
+        g_comp_ctx.h_actual_uncomp_sizes, new_capacity * sizeof(size_t),
+        "actual uncompressed size table");
+    g_comp_ctx.h_statuses = (hipcompStatus*)host_realloc_checked(
+        g_comp_ctx.h_statuses, new_capacity * sizeof(hipcompStatus),
+        "decompression status table");
 
-  if (g_comp_ctx.d_uncomp_ptrs) CUDA_CALL(hipFree(g_comp_ctx.d_uncomp_ptrs));
-  if (g_comp_ctx.d_comp_ptrs) CUDA_CALL(hipFree(g_comp_ctx.d_comp_ptrs));
-  if (g_comp_ctx.d_uncomp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_uncomp_sizes));
-  if (g_comp_ctx.d_comp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_comp_sizes));
-  if (g_comp_ctx.d_actual_uncomp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_actual_uncomp_sizes));
-  if (g_comp_ctx.d_statuses) CUDA_CALL(hipFree(g_comp_ctx.d_statuses));
+    if (g_comp_ctx.d_uncomp_ptrs) CUDA_CALL(hipFree(g_comp_ctx.d_uncomp_ptrs));
+    if (g_comp_ctx.d_comp_ptrs) CUDA_CALL(hipFree(g_comp_ctx.d_comp_ptrs));
+    if (g_comp_ctx.d_uncomp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_uncomp_sizes));
+    if (g_comp_ctx.d_comp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_comp_sizes));
+    if (g_comp_ctx.d_actual_uncomp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_actual_uncomp_sizes));
+    if (g_comp_ctx.d_statuses) CUDA_CALL(hipFree(g_comp_ctx.d_statuses));
 
-  CUDA_CALL(hipMalloc(&g_comp_ctx.d_uncomp_ptrs, new_max_chunks * sizeof(void*)));
-  CUDA_CALL(hipMalloc(&g_comp_ctx.d_comp_ptrs, new_max_chunks * sizeof(void*)));
-  CUDA_CALL(hipMalloc(&g_comp_ctx.d_uncomp_sizes, new_max_chunks * sizeof(size_t)));
-  CUDA_CALL(hipMalloc(&g_comp_ctx.d_comp_sizes, new_max_chunks * sizeof(size_t)));
-  CUDA_CALL(hipMalloc(&g_comp_ctx.d_actual_uncomp_sizes, new_max_chunks * sizeof(size_t)));
-  CUDA_CALL(hipMalloc(&g_comp_ctx.d_statuses, new_max_chunks * sizeof(hipcompStatus_t)));
+    CUDA_CALL(hipMalloc(&g_comp_ctx.d_uncomp_ptrs, new_capacity * sizeof(void*)));
+    CUDA_CALL(hipMalloc(&g_comp_ctx.d_comp_ptrs, new_capacity * sizeof(void*)));
+    CUDA_CALL(hipMalloc(&g_comp_ctx.d_uncomp_sizes, new_capacity * sizeof(size_t)));
+    CUDA_CALL(hipMalloc(&g_comp_ctx.d_comp_sizes, new_capacity * sizeof(size_t)));
+    CUDA_CALL(hipMalloc(&g_comp_ctx.d_actual_uncomp_sizes, new_capacity * sizeof(size_t)));
+    CUDA_CALL(hipMalloc(&g_comp_ctx.d_statuses, new_capacity * sizeof(hipcompStatus_t)));
 
-  g_comp_ctx.h_actual_uncomp_sizes = (size_t*)host_realloc_checked(
-      g_comp_ctx.h_actual_uncomp_sizes, new_max_chunks * sizeof(size_t),
-      "actual uncompressed size table");
-  g_comp_ctx.h_statuses = (hipcompStatus*)host_realloc_checked(
-      g_comp_ctx.h_statuses, new_max_chunks * sizeof(hipcompStatus),
-      "decompression status table");
-
-  g_comp_ctx.max_chunks = new_max_chunks;
+    g_comp_ctx.max_chunks = new_capacity;
+  }
 
   const size_t device_bytes = g_comp_ctx.max_chunk_output_size * g_comp_ctx.max_chunks;
   ensure_device_compressed_capacity(device_bytes);
@@ -206,6 +218,124 @@ static void ensure_chunk_resources(size_t chunk_size, size_t required_chunks)
   const size_t host_bytes = sizeof(HipcompHeader)
       + g_comp_ctx.max_chunks * (sizeof(uint64_t) + g_comp_ctx.max_chunk_output_size);
   ensure_host_capacity(host_bytes);
+
+  size_t comp_temp_bytes = 0;
+  HIPCOMP_CALL(hipcompBatchedLZ4CompressGetTempSize(
+      g_comp_ctx.max_chunks, g_comp_ctx.chunk_size, opts, &comp_temp_bytes));
+  ensure_device_buffer_size(&g_comp_ctx.d_comp_temp,
+                            &g_comp_ctx.comp_temp_bytes,
+                            comp_temp_bytes,
+                            "compression temp");
+
+  size_t decomp_temp_bytes = 0;
+  HIPCOMP_CALL(hipcompBatchedLZ4DecompressGetTempSize(
+      g_comp_ctx.max_chunks, g_comp_ctx.chunk_size, &decomp_temp_bytes));
+  ensure_device_buffer_size(&g_comp_ctx.d_decomp_temp,
+                            &g_comp_ctx.decomp_temp_bytes,
+                            decomp_temp_bytes,
+                            "decompression temp");
+}
+
+static hipcompStatus launch_compress_with_retry(size_t num_chunks,
+                                                hipcompBatchedLZ4Opts_t opts)
+{
+  const size_t max_attempts = 5;
+  hipcompStatus status = HIPCOMP_STATUS_SUCCESS;
+
+  for (size_t attempt = 0; attempt < max_attempts; ++attempt) {
+    status = hipcompBatchedLZ4CompressAsync(
+        (const void* const*)g_comp_ctx.d_uncomp_ptrs,
+        g_comp_ctx.d_uncomp_sizes,
+        num_chunks,
+        g_comp_ctx.chunk_size,
+        g_comp_ctx.d_comp_temp,
+        g_comp_ctx.comp_temp_bytes,
+        g_comp_ctx.d_comp_ptrs,
+        g_comp_ctx.d_comp_sizes,
+        opts,
+        g_comp_ctx.stream);
+
+    if (status == HIPCOMP_STATUS_SUCCESS) {
+      return status;
+    }
+
+    size_t recommended = 0;
+    hipcompStatus temp_status = hipcompBatchedLZ4CompressGetTempSize(
+        num_chunks, g_comp_ctx.chunk_size, opts, &recommended);
+
+    size_t new_bytes = g_comp_ctx.comp_temp_bytes ? g_comp_ctx.comp_temp_bytes * 2 : recommended;
+    if (new_bytes < recommended) {
+      new_bytes = recommended;
+    }
+
+    const size_t fallback = g_comp_ctx.chunk_size * num_chunks;
+    if (new_bytes < fallback) {
+      new_bytes = fallback;
+    }
+
+    if (new_bytes == 0 || new_bytes <= g_comp_ctx.comp_temp_bytes) {
+      break;
+    }
+
+    ensure_device_buffer_size(&g_comp_ctx.d_comp_temp,
+                              &g_comp_ctx.comp_temp_bytes,
+                              new_bytes,
+                              "compression temp");
+
+    if (temp_status != HIPCOMP_STATUS_SUCCESS && recommended == 0) {
+      continue;
+    }
+  }
+
+  return status;
+}
+
+static hipcompStatus launch_decompress_with_retry(size_t num_chunks)
+{
+  const size_t max_attempts = 5;
+  hipcompStatus status = HIPCOMP_STATUS_SUCCESS;
+
+  for (size_t attempt = 0; attempt < max_attempts; ++attempt) {
+    status = hipcompBatchedLZ4DecompressAsync(
+        (const void* const*)g_comp_ctx.d_comp_ptrs,
+        g_comp_ctx.d_comp_sizes,
+        g_comp_ctx.d_uncomp_sizes,
+        g_comp_ctx.d_actual_uncomp_sizes,
+        num_chunks,
+        g_comp_ctx.d_decomp_temp,
+        g_comp_ctx.decomp_temp_bytes,
+        g_comp_ctx.d_uncomp_ptrs,
+        g_comp_ctx.d_statuses,
+        g_comp_ctx.stream);
+
+    if (status == HIPCOMP_STATUS_SUCCESS) {
+      return status;
+    }
+
+    size_t recommended = 0;
+    hipcompStatus temp_status = hipcompBatchedLZ4DecompressGetTempSize(
+        num_chunks, g_comp_ctx.chunk_size, &recommended);
+
+    size_t new_bytes = g_comp_ctx.decomp_temp_bytes ? g_comp_ctx.decomp_temp_bytes * 2 : recommended;
+    if (new_bytes < recommended) {
+      new_bytes = recommended;
+    }
+
+    if (new_bytes == 0 || new_bytes <= g_comp_ctx.decomp_temp_bytes) {
+      break;
+    }
+
+    ensure_device_buffer_size(&g_comp_ctx.d_decomp_temp,
+                              &g_comp_ctx.decomp_temp_bytes,
+                              new_bytes,
+                              "decompression temp");
+
+    if (temp_status != HIPCOMP_STATUS_SUCCESS && recommended == 0) {
+      continue;
+    }
+  }
+
+  return status;
 }
 
 extern "C" void CUDA_InitCompression(size_t max_uncompressed_size, int compression_level)
@@ -278,17 +408,13 @@ extern "C" size_t CUDA_CompressWavefield(
 
   hipcompBatchedLZ4Opts_t opts = HIPCOMP_BatchedLZ4DefaultOpts;
 
-  HIPCOMP_CALL(hipcompBatchedLZ4CompressAsync(
-      (const void* const*)g_comp_ctx.d_uncomp_ptrs,
-      g_comp_ctx.d_uncomp_sizes,
-      num_chunks,
-      g_comp_ctx.chunk_size,
-      g_comp_ctx.d_comp_temp,
-      g_comp_ctx.comp_temp_bytes,
-      g_comp_ctx.d_comp_ptrs,
-      g_comp_ctx.d_comp_sizes,
-      opts,
-      g_comp_ctx.stream));
+  hipcompStatus status = launch_compress_with_retry(num_chunks, opts);
+  if (status != HIPCOMP_STATUS_SUCCESS) {
+    fprintf(stderr,
+            "hipCOMP compression failed after resizing temp buffers (status=%d)\n",
+            (int)status);
+    exit(EXIT_FAILURE);
+  }
 
   CUDA_CALL(hipStreamSynchronize(g_comp_ctx.stream));
 
@@ -420,17 +546,14 @@ extern "C" int CUDA_DecompressWavefield(
   CUDA_CALL(hipMemset(g_comp_ctx.d_statuses, 0,
                       header.num_chunks * sizeof(hipcompStatus_t)));
 
-  HIPCOMP_CALL(hipcompBatchedLZ4DecompressAsync(
-      (const void* const*)g_comp_ctx.d_comp_ptrs,
-      g_comp_ctx.d_comp_sizes,
-      g_comp_ctx.d_uncomp_sizes,
-      g_comp_ctx.d_actual_uncomp_sizes,
-      header.num_chunks,
-      g_comp_ctx.d_decomp_temp,
-      g_comp_ctx.decomp_temp_bytes,
-      (void* const*)g_comp_ctx.d_uncomp_ptrs,
-      g_comp_ctx.d_statuses,
-      g_comp_ctx.stream));
+  hipcompStatus decomp_status = launch_decompress_with_retry(header.num_chunks);
+  if (decomp_status != HIPCOMP_STATUS_SUCCESS) {
+    fprintf(stderr,
+            "hipCOMP decompression failed after resizing temp buffers (status=%d)\n",
+            (int)decomp_status);
+    free(chunk_sizes);
+    return 0;
+  }
 
   CUDA_CALL(hipStreamSynchronize(g_comp_ctx.stream));
 

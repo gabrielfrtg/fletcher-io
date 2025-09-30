@@ -18,13 +18,7 @@
 #endif
 #endif
 
-#if defined(hipcompStatus_t)
 typedef hipcompStatus_t hipcompStatus;
-#elif defined(nvcompStatus_t)
-typedef nvcompStatus_t hipcompStatus;
-#else
-typedef int hipcompStatus;
-#endif
 
 #ifndef HIPCOMP_CALL
 #define HIPCOMP_CALL(call)                                                                    \
@@ -65,10 +59,10 @@ typedef struct {
   size_t decomp_temp_bytes;
 
   size_t* d_actual_uncomp_sizes;
-  hipcompStatus* d_statuses;
+  hipcompStatus_t* d_statuses;
 
   size_t* h_actual_uncomp_sizes;
-  hipcompStatus* h_statuses;
+  hipcompStatus_t* h_statuses;
 
   hipStream_t stream;
   hipEvent_t comp_event;
@@ -195,7 +189,7 @@ static void ensure_chunk_resources(size_t chunk_size, size_t required_chunks)
   CUDA_CALL(hipMalloc(&g_comp_ctx.d_uncomp_sizes, new_max_chunks * sizeof(size_t)));
   CUDA_CALL(hipMalloc(&g_comp_ctx.d_comp_sizes, new_max_chunks * sizeof(size_t)));
   CUDA_CALL(hipMalloc(&g_comp_ctx.d_actual_uncomp_sizes, new_max_chunks * sizeof(size_t)));
-  CUDA_CALL(hipMalloc(&g_comp_ctx.d_statuses, new_max_chunks * sizeof(hipcompStatus)));
+  CUDA_CALL(hipMalloc(&g_comp_ctx.d_statuses, new_max_chunks * sizeof(hipcompStatus_t)));
 
   g_comp_ctx.h_actual_uncomp_sizes = (size_t*)host_realloc_checked(
       g_comp_ctx.h_actual_uncomp_sizes, new_max_chunks * sizeof(size_t),
@@ -424,7 +418,7 @@ extern "C" int CUDA_DecompressWavefield(
                            header.num_chunks * sizeof(size_t), hipMemcpyHostToDevice, g_comp_ctx.stream));
 
   CUDA_CALL(hipMemset(g_comp_ctx.d_statuses, 0,
-                      header.num_chunks * sizeof(hipcompStatus)));
+                      header.num_chunks * sizeof(hipcompStatus_t)));
 
   HIPCOMP_CALL(hipcompBatchedLZ4DecompressAsync(
       (const void* const*)g_comp_ctx.d_comp_ptrs,
@@ -446,7 +440,7 @@ extern "C" int CUDA_DecompressWavefield(
                       hipMemcpyDeviceToHost));
   CUDA_CALL(hipMemcpy(g_comp_ctx.h_statuses,
                       g_comp_ctx.d_statuses,
-                      header.num_chunks * sizeof(hipcompStatus),
+                      header.num_chunks * sizeof(hipcompStatus_t),
                       hipMemcpyDeviceToHost));
 
   int success = 1;

@@ -444,11 +444,35 @@ extern "C" size_t CUDA_CompressWavefield(
     chunk_sizes[i] = g_comp_ctx.h_comp_sizes[i];
   }
 
-  uint8_t* dst = reinterpret_cast<uint8_t*>(chunk_sizes + num_chunks);
+  const size_t staging_bytes = g_comp_ctx.max_chunk_output_size * num_chunks;
+  uint8_t* const staging_base = reinterpret_cast<uint8_t*>(chunk_sizes + num_chunks);
+
+  // Copy the full strided output buffer back to the host in one transfer. The
+  // payload is later compacted in-place so the on-disk layout matches the CUDA
+  // version (header + chunk sizes + contiguous payload).
+  if (staging_bytes > 0) {
+    CUDA_CALL(hipMemcpy(staging_base,
+                        g_comp_ctx.d_compressed_buffer,
+                        staging_bytes,
+                        hipMemcpyDeviceToHost));
+  }
+
+  uint8_t* dst = staging_base;
   for (size_t i = 0; i < num_chunks; ++i) {
-    const uint8_t* src = reinterpret_cast<uint8_t*>(g_comp_ctx.h_comp_ptrs[i]);
-    CUDA_CALL(hipMemcpy(dst, src, g_comp_ctx.h_comp_sizes[i], hipMemcpyDeviceToHost));
-    dst += g_comp_ctx.h_comp_sizes[i];
+    const uint8_t* src_host = staging_base + i * g_comp_ctx.max_chunk_output_size;
+    if (g_comp_ctx.h_comp_sizes[i] > 0) {
+      memmove(dst, src_host, g_comp_ctx.h_comp_sizes[i]);
+      dst += g_comp_ctx.h_comp_sizes[i];
+    }
+  }
+
+  const size_t compacted_bytes = static_cast<size_t>(dst - staging_base);
+  if (compacted_bytes != payload_bytes) {
+    fprintf(stderr,
+            "hipCOMP: payload pack size mismatch (expected=%zu, compacted=%zu)\n",
+            payload_bytes,
+            compacted_bytes);
+    exit(EXIT_FAILURE);
   }
 
   CUDA_CALL(hipEventRecord(g_comp_ctx.comp_event, g_comp_ctx.stream));

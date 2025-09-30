@@ -3,6 +3,7 @@
 #ifdef USE_HIPCOMP
 
 #include <hip/hip_runtime.h>
+#include <hipcomp.h>
 #include <hipcomp/lz4.h>
 #include <hipcomp/lz4.hpp>
 #include <hipcomp/hipcompManager.hpp>
@@ -25,11 +26,7 @@
 
 namespace {
 
-#if defined(HIPCOMP_TYPE_FLOAT)
 static constexpr hipcompType_t kWavefieldType = HIPCOMP_TYPE_FLOAT;
-#else
-static constexpr hipcompType_t kWavefieldType = hipcomp::HIPCOMP_TYPE_FLOAT;
-#endif
 
 typedef struct {
     void* d_compressed_buffer;

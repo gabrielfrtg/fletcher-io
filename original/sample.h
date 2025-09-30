@@ -2,6 +2,7 @@
 // START SAMPLE_PRE_LOOP
 
 #ifndef __NVCC__
+#ifndef __HIP__
 extern float* ch1dxx;
 extern float* ch1dyy;
 extern float* ch1dzz;
@@ -12,6 +13,7 @@ extern float* v2px;
 extern float* v2pz;
 extern float* v2sz;
 extern float* v2pn;
+#endif
 #endif
 
 const int strideX=ind(1,0,0)-ind(0,0,0);

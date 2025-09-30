@@ -23,6 +23,16 @@
 
 #include "cuda_compression.h"
 
+namespace {
+
+#if defined(HIPCOMP_TYPE_FLOAT)
+static constexpr hipcompType_t kWavefieldType = HIPCOMP_TYPE_FLOAT;
+#elif defined(hipcomp::HIPCOMP_TYPE_FLOAT)
+static constexpr hipcompType_t kWavefieldType = hipcomp::HIPCOMP_TYPE_FLOAT;
+#else
+#  error "hipcomp float type enumerator is unavailable"
+#endif
+
 typedef struct {
     void* d_compressed_buffer;
     size_t compressed_buffer_size;
@@ -33,6 +43,8 @@ typedef struct {
     int compression_level;
     int initialized;
 } CompressionContext;
+
+} // namespace
 
 static CompressionContext g_comp_ctx = {0};
 
@@ -87,7 +99,7 @@ static size_t CUDA_CompressWavefield(
 
     hipcomp::LZ4Manager manager(
         chunk_size,
-        hipcomp::HIPCOMP_TYPE_FLOAT,
+        kWavefieldType,
         g_comp_ctx.stream);
 
     hipcomp::CompressionConfig comp_config = manager.configure_compression(uncompressed_bytes);
@@ -145,7 +157,7 @@ extern "C" int CUDA_DecompressWavefield(
 
     hipcomp::LZ4Manager manager(
         chunk_size,
-        hipcomp::HIPCOMP_TYPE_FLOAT,
+        kWavefieldType,
         g_comp_ctx.stream);
 
     auto decomp_config = manager.configure_decompression(

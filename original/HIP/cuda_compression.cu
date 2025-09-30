@@ -6,6 +6,7 @@
 #include <hipcomp/lz4.h>
 #include <hipcomp/lz4.hpp>
 #include <hipcomp/hipcompManager.hpp>
+#include <hipcomp/shared_types.h>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -71,16 +72,14 @@ static size_t CUDA_CompressWavefield(
 
     const size_t uncompressed_bytes = num_elements * sizeof(float);
 
-    hipcompBatchedLZ4Opts_t comp_opts = hipcompBatchedLZ4DefaultOpts;
-
     size_t chunk_size = 64 * 1024;
-    if (uncompressed_bytes < chunk_size) {
-        chunk_size = uncompressed_bytes ? uncompressed_bytes : 64 * 1024;
+    if (uncompressed_bytes > 0 && uncompressed_bytes < chunk_size) {
+        chunk_size = uncompressed_bytes;
     }
 
     hipcomp::LZ4Manager manager(
         chunk_size,
-        comp_opts,
+        HIPCOMP_TYPE_FLOAT,
         g_comp_ctx.stream);
 
     hipcomp::CompressionConfig comp_config = manager.configure_compression(uncompressed_bytes);
@@ -108,7 +107,7 @@ static size_t CUDA_CompressWavefield(
     CUDA_CALL(hipStreamSynchronize(g_comp_ctx.stream));
 
     size_t actual_compressed_size = manager.get_compressed_output_size(
-        reinterpret_cast<uint8_t*>(g_comp_ctx.d_compressed_buffer));
+        reinterpret_cast<const uint8_t*>(g_comp_ctx.d_compressed_buffer));
 
     CUDA_CALL(hipMemcpyAsync(
         g_comp_ctx.h_compressed_buffer,
@@ -134,12 +133,11 @@ extern "C" int CUDA_DecompressWavefield(
         return 0;
     }
 
-    hipcompBatchedLZ4Opts_t comp_opts = hipcompBatchedLZ4DefaultOpts;
-    size_t chunk_size = 64 * 1024;
+    const size_t chunk_size = 64 * 1024;
 
     hipcomp::LZ4Manager manager(
         chunk_size,
-        comp_opts,
+        HIPCOMP_TYPE_FLOAT,
         g_comp_ctx.stream);
 
     auto decomp_config = manager.configure_decompression(

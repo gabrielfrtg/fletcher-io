@@ -27,10 +27,8 @@ namespace {
 
 #if defined(HIPCOMP_TYPE_FLOAT)
 static constexpr hipcompType_t kWavefieldType = HIPCOMP_TYPE_FLOAT;
-#elif defined(hipcomp::HIPCOMP_TYPE_FLOAT)
-static constexpr hipcompType_t kWavefieldType = hipcomp::HIPCOMP_TYPE_FLOAT;
 #else
-#  error "hipcomp float type enumerator is unavailable"
+static constexpr hipcompType_t kWavefieldType = hipcomp::HIPCOMP_TYPE_FLOAT;
 #endif
 
 typedef struct {

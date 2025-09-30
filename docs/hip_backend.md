@@ -68,4 +68,6 @@ make -j backend=HIP USE_HIPCOMP=1 HIPCOMP_ROOT=/opt/rocm/hipcomp-core
 ```
 
 `flags.mk` wires `HIPCOMP_ROOT` into both the host and device compiler include
-paths and links against `libhipcomp`. 【F:original/HIP/flags.mk†L1-L16】
+paths and searches common install locations (e.g. `lib`, `lib64`, `build/lib`)
+for `libhipcomp.{so,a}`.  Override `HIPCOMP_LIB_DIR` if your build stores the
+library elsewhere. 【F:original/HIP/flags.mk†L1-L30】

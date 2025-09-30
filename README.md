@@ -37,6 +37,9 @@ make clean
 # Override ROCM_PATH if hipconfig cannot detect your installation automatically.
 ROCM_PATH=/opt/rocm-7.0.1 \
   make -j backend=HIP USE_HIPCOMP=1 HIPCOMP_ROOT=/opt/rocm/hipcomp-core
+
+# When hipCOMP is built in-tree, point HIPCOMP_LIB_DIR at the directory that
+# contains libhipcomp.{so,a} (e.g. HIPCOMP_LIB_DIR=/opt/hipcomp-core/build/lib).
 ```
 
 See [`docs/hip_backend.md`](docs/hip_backend.md) for an architectural overview

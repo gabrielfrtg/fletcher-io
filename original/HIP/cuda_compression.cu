@@ -171,13 +171,28 @@ extern "C" size_t CUDA_CompressWavefield(
     size_t* h_out_bytes = (size_t*)malloc(num_chunks * sizeof(size_t));
     CUDA_CALL(hipMemcpy(h_out_bytes, d_out_bytes, num_chunks * sizeof(size_t), hipMemcpyDeviceToHost));
 
-    // Calculate total compressed size and copy to contiguous buffer
+    // Calculate total compressed size
     size_t actual_compressed_size = 0;
     for (size_t i = 0; i < num_chunks; i++) {
         actual_compressed_size += h_out_bytes[i];
     }
 
-    // Copy compressed chunks contiguously (they may have gaps)
+    // Format: [num_chunks][chunk_sizes...][compressed_data...]
+    size_t metadata_size = sizeof(size_t) + num_chunks * sizeof(size_t);
+    size_t total_size = metadata_size + actual_compressed_size;
+
+    if (total_size > g_comp_ctx.h_compressed_buffer_size) {
+        free(g_comp_ctx.h_compressed_buffer);
+        g_comp_ctx.h_compressed_buffer_size = total_size;
+        g_comp_ctx.h_compressed_buffer = malloc(g_comp_ctx.h_compressed_buffer_size);
+    }
+
+    // Write metadata to host buffer
+    size_t* metadata = (size_t*)g_comp_ctx.h_compressed_buffer;
+    metadata[0] = num_chunks;
+    memcpy(&metadata[1], h_out_bytes, num_chunks * sizeof(size_t));
+
+    // Copy compressed chunks contiguously to device temp buffer
     void* d_final_compressed;
     CUDA_CALL(hipMalloc(&d_final_compressed, actual_compressed_size));
 
@@ -190,9 +205,9 @@ extern "C" size_t CUDA_CompressWavefield(
         offset += h_out_bytes[i];
     }
 
-    // Copy to host
+    // Copy compressed data to host buffer (after metadata)
     CUDA_CALL(hipMemcpyAsync(
-        g_comp_ctx.h_compressed_buffer,
+        (uint8_t*)g_comp_ctx.h_compressed_buffer + metadata_size,
         d_final_compressed,
         actual_compressed_size,
         hipMemcpyDeviceToHost,
@@ -214,7 +229,7 @@ extern "C" size_t CUDA_CompressWavefield(
     free(h_out_bytes);
 
     *h_compressed_output = g_comp_ctx.h_compressed_buffer;
-    return actual_compressed_size;
+    return total_size;
 }
 
 // Decompress a compressed buffer back into a provided device buffer
@@ -228,8 +243,17 @@ extern "C" int CUDA_DecompressWavefield(
         return 0;
     }
 
-    size_t expected_bytes = expected_num_elements * sizeof(float);
-    size_t num_chunks = (expected_bytes + g_comp_ctx.chunk_size - 1) / g_comp_ctx.chunk_size;
+    // Read metadata from compressed buffer
+    // Format: [num_chunks][chunk_sizes...][compressed_data...]
+    size_t num_chunks;
+    CUDA_CALL(hipMemcpy(&num_chunks, d_compressed_buffer, sizeof(size_t), hipMemcpyDeviceToHost));
+
+    size_t* h_chunk_sizes = (size_t*)malloc(num_chunks * sizeof(size_t));
+    CUDA_CALL(hipMemcpy(h_chunk_sizes, (uint8_t*)d_compressed_buffer + sizeof(size_t),
+                        num_chunks * sizeof(size_t), hipMemcpyDeviceToHost));
+
+    size_t metadata_size = sizeof(size_t) + num_chunks * sizeof(size_t);
+    const uint8_t* d_compressed_data = (const uint8_t*)d_compressed_buffer + metadata_size;
 
     // Setup arrays for batched decompression
     const void** d_in_ptrs;
@@ -256,6 +280,7 @@ extern "C" int CUDA_DecompressWavefield(
         hipFree(d_in_bytes);
         hipFree(d_out_bytes);
         hipFree(d_status);
+        free(h_chunk_sizes);
         return 0;
     }
 
@@ -264,48 +289,32 @@ extern "C" int CUDA_DecompressWavefield(
         CUDA_CALL(hipMalloc(&d_temp, temp_bytes));
     }
 
-    // First, get decompressed sizes for each chunk
-    status = hipcompBatchedLZ4GetDecompressSizeAsync(
-        &d_compressed_buffer,
-        d_in_bytes,
-        d_out_bytes,
-        num_chunks,
-        g_comp_ctx.stream);
-
-    if (status != hipcompSuccess) {
-        printf("ERROR: hipcompBatchedLZ4GetDecompressSizeAsync failed\n");
-        if (d_temp) hipFree(d_temp);
-        hipFree(d_in_ptrs);
-        hipFree(d_out_ptrs);
-        hipFree(d_in_bytes);
-        hipFree(d_out_bytes);
-        hipFree(d_status);
-        return 0;
-    }
-
-    CUDA_CALL(hipStreamSynchronize(g_comp_ctx.stream));
-
-    // Get sizes and setup pointers
-    size_t* h_in_bytes = (size_t*)malloc(num_chunks * sizeof(size_t));
-    size_t* h_out_bytes = (size_t*)malloc(num_chunks * sizeof(size_t));
-    CUDA_CALL(hipMemcpy(h_in_bytes, d_in_bytes, num_chunks * sizeof(size_t), hipMemcpyDeviceToHost));
-    CUDA_CALL(hipMemcpy(h_out_bytes, d_out_bytes, num_chunks * sizeof(size_t), hipMemcpyDeviceToHost));
-
-    // Setup input/output pointers
+    // Setup pointers and sizes for each chunk
     const void** h_in_ptrs = (const void**)malloc(num_chunks * sizeof(void*));
     void** h_out_ptrs = (void**)malloc(num_chunks * sizeof(void*));
+    size_t* h_out_bytes = (size_t*)malloc(num_chunks * sizeof(size_t));
 
     size_t in_offset = 0;
     size_t out_offset = 0;
+    size_t expected_bytes = expected_num_elements * sizeof(float);
+
     for (size_t i = 0; i < num_chunks; i++) {
-        h_in_ptrs[i] = (const void*)((uint8_t*)d_compressed_buffer + in_offset);
+        h_in_ptrs[i] = (const void*)(d_compressed_data + in_offset);
         h_out_ptrs[i] = (void*)((uint8_t*)d_output_wavefield + out_offset);
-        in_offset += h_in_bytes[i];
+
+        // Calculate expected uncompressed size for this chunk
+        size_t remaining = expected_bytes - out_offset;
+        h_out_bytes[i] = (remaining < g_comp_ctx.chunk_size) ? remaining : g_comp_ctx.chunk_size;
+
+        in_offset += h_chunk_sizes[i];
         out_offset += h_out_bytes[i];
     }
 
+    // Copy arrays to device
     CUDA_CALL(hipMemcpy(d_in_ptrs, h_in_ptrs, num_chunks * sizeof(void*), hipMemcpyHostToDevice));
     CUDA_CALL(hipMemcpy(d_out_ptrs, h_out_ptrs, num_chunks * sizeof(void*), hipMemcpyHostToDevice));
+    CUDA_CALL(hipMemcpy(d_in_bytes, h_chunk_sizes, num_chunks * sizeof(size_t), hipMemcpyHostToDevice));
+    CUDA_CALL(hipMemcpy(d_out_bytes, h_out_bytes, num_chunks * sizeof(size_t), hipMemcpyHostToDevice));
 
     // Perform decompression
     status = hipcompBatchedLZ4DecompressAsync(
@@ -330,7 +339,7 @@ extern "C" int CUDA_DecompressWavefield(
         hipFree(d_status);
         free(h_in_ptrs);
         free(h_out_ptrs);
-        free(h_in_bytes);
+        free(h_chunk_sizes);
         free(h_out_bytes);
         return 0;
     }
@@ -346,7 +355,7 @@ extern "C" int CUDA_DecompressWavefield(
     hipFree(d_status);
     free(h_in_ptrs);
     free(h_out_ptrs);
-    free(h_in_bytes);
+    free(h_chunk_sizes);
     free(h_out_bytes);
 
     return 1;

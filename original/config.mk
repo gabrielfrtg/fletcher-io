@@ -7,6 +7,9 @@ NVCC=nvcc
 # PGCC=pgcc
 # CLANG=clang
 
+HIPCC=hipcc
+HIPCC_LIBS=-lstdc++
+
 # Library paths
 GCC_LIBS=-lm
 NVCC_LIBS=-lcudart -lstdc++    # it may include CUDA lib64 path...

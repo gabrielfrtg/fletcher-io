@@ -70,6 +70,14 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 #include "precomp.h"
 #undef MODEL_INITIALIZE
 
+#ifdef USE_HIPCOMP
+  FILE* checkpoint_file = NULL;
+  checkpoint_file = fopen("checkpoints_compressed.bin", "wb");
+  if (!checkpoint_file) {
+    printf("Warning: Cannot open compressed checkpoint file\n");
+  }
+#endif
+
   // DRIVER_Initialize initialize target, allocate data etc
   DRIVER_Initialize(sx,   sy,   sz,   bord,
 		      dx,  dy,  dz,  dt,
@@ -77,6 +85,44 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 		      phi,    theta,
 		      pp,    pc,    qp,    qc);
 
+#ifdef USE_HIPCOMP
+      if (checkpoint_file) {
+          void* compressed_data = NULL;
+          size_t compressed_size = 0;
+          
+          // Get compressed checkpoint directly from GPU
+          DRIVER_Get_compressed_checkpoint(sx, sy, sz, &compressed_data, &compressed_size);
+          
+          if (compressed_size > 0 && compressed_data != NULL) {
+              // Write checkpoint header
+              typedef struct {
+                  int iteration;
+                  int nx, ny, nz;
+                  size_t original_size;
+                  size_t compressed_size;
+                  float timestamp;
+              } CheckpointHeader;
+              
+              CheckpointHeader header;
+              header.iteration = it;
+              header.nx = sx - 2*bord - 2*absorb;
+              header.ny = sy - 2*bord - 2*absorb;
+              header.nz = sz - 2*bord - 2*absorb;
+              header.original_size = ((size_t)sx*sy)*sz * sizeof(float);
+              header.compressed_size = compressed_size;
+              header.timestamp = tSim;
+              
+              // Write header and compressed data
+              fwrite(&header, sizeof(CheckpointHeader), 1, checkpoint_file);
+              fwrite(compressed_data, 1, compressed_size, checkpoint_file);
+              fflush(checkpoint_file);
+          }
+      } else {
+        // fallback
+        DRIVER_Update_pointers(sx,sy,sz,pc);
+        DumpSliceFile_Nofor(sx,sy,sz,pc,sPtr);
+      }
+#endif
   
   double walltime=0.0;
   double tdt=0.0;
@@ -110,13 +156,49 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 
     tSim=it*dt;
     if (tSim >= tOut) {
+#ifdef USE_HIPCOMP
+      if (checkpoint_file) {
+          void* compressed_data = NULL;
+          size_t compressed_size = 0;
+          
+          // Get compressed checkpoint directly from GPU
+          DRIVER_Get_compressed_checkpoint(sx, sy, sz, &compressed_data, &compressed_size);
+          
+          if (compressed_size > 0 && compressed_data != NULL) {
+              // Write checkpoint header
+              typedef struct {
+                  int iteration;
+                  int nx, ny, nz;
+                  size_t original_size;
+                  size_t compressed_size;
+                  float timestamp;
+              } CheckpointHeader;
+              
+              CheckpointHeader header;
+              header.iteration = it;
+              header.nx = sx - 2*bord - 2*absorb;
+              header.ny = sy - 2*bord - 2*absorb;
+              header.nz = sz - 2*bord - 2*absorb;
+              header.original_size = ((size_t)sx*sy)*sz * sizeof(float);
+              header.compressed_size = compressed_size;
+              header.timestamp = tSim;
+              
+              // Write header and compressed data
+              fwrite(&header, sizeof(CheckpointHeader), 1, checkpoint_file);
+              fwrite(compressed_data, 1, compressed_size, checkpoint_file);
+              fflush(checkpoint_file);
+          }
+      } else {
+#endif
+        DRIVER_Update_pointers(sx,sy,sz,pc);
 
-      DRIVER_Update_pointers(sx,sy,sz,pc);
-
-      // double dd1 = wtime();
-      DumpSliceFile_Nofor(sx,sy,sz,pc,sPtr);
-      // tdt+=wtime()-dd1;
-
+        // double dd1 = wtime();
+        DumpSliceFile_Nofor(sx,sy,sz,pc,sPtr);
+        // tdt+=wtime()-dd1;
+#ifdef USE_HIPCOMP
+      }
+#endif
+      
       tOut=(++nOut)*dtOutput;
 #ifdef _DUMP
       DRIVER_Update_pointers(sx,sy,sz,pc);
@@ -124,6 +206,30 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 #endif
     }
   }
+
+#ifdef USE_HIPCOMP
+  if (checkpoint_file) {
+  fclose(checkpoint_file);
+  } else {
+#endif
+  fclose(sPtr->fpBinary);
+#ifdef USE_HIPCOMP
+  }
+#endif
+
+#ifdef USE_HIPCOMP
+  // Optional: decompress entire checkpoint file after it is closed (file-level)
+  // Enable with environment variable DECOMPRESS_FILE=1
+  const char* decomp_file_env = getenv("DECOMPRESS_FILE");
+  if (decomp_file_env && atoi(decomp_file_env) != 0) {
+    DRIVER_Decompress_checkpoint_file(
+      "checkpoints_compressed.bin",
+      "checkpoints_decompressed.rsf",
+      "checkpoints_decompressed.rsf@",
+      sx, sy, sz, bord, absorb,
+      dx, dy, dz, dtOutput);
+  }
+#endif
 
   // close binary output file before measuring time to include total io time
   CloseSliceFile(sPtr);

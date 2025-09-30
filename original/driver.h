@@ -26,13 +26,13 @@ void DRIVER_Get_compressed_checkpoint(const int sx, const int sy, const int sz,
                                       void** compressed_data, size_t* compressed_size);
 
 int DRIVER_Decompress_last(const int sx, const int sy, const int sz,
-						   float* host_compressed, size_t compressed_size);
+                                                   float* host_compressed, size_t compressed_size);
 
 void DRIVER_Decompress_checkpoint_file(const char* infile,
 									   const char* out_header,
-									   const char* out_data,
-									   int sx, int sy, int sz, int bord, int absorb,
-									   float dx, float dy, float dz, float dt_output);
+                                                                           const char* out_data,
+                                                                           int sx, int sy, int sz, int bord, int absorb,
+                                                                           float dx, float dy, float dz, float dt_output);
 #endif
 
 #ifdef __cplusplus

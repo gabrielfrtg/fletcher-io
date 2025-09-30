@@ -1,8 +1,6 @@
 #ifndef __HIP_CUDA_COMPRESSION_H
 #define __HIP_CUDA_COMPRESSION_H
 
-#include <stddef.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif

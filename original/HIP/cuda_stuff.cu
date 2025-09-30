@@ -101,9 +101,10 @@ void CUDA_Initialize(const int sx, const int sy, const int sz, const int bord,
   printf("GPU memory usage = %ld MiB\n", 15*msize_vol/1024/1024);
 
 #ifdef USE_HIPCOMP
-   const size_t max_uncompressed = ((size_t)sx*sy)*sz * sizeof(float);
-   CUDA_InitCompression(max_uncompressed, 0);
+  const size_t max_uncompressed = ((size_t)sx * sy) * sz * sizeof(float);
+  CUDA_InitCompression(max_uncompressed, 0);
 #endif
+
 }
 
 

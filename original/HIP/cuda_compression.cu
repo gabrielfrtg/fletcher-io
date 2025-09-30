@@ -64,6 +64,12 @@ typedef struct {
   void* d_decomp_temp;
   size_t decomp_temp_bytes;
 
+  size_t* d_actual_uncomp_sizes;
+  hipcompStatus* d_statuses;
+
+  size_t* h_actual_uncomp_sizes;
+  hipcompStatus* h_statuses;
+
   hipStream_t stream;
   hipEvent_t comp_event;
 
@@ -181,11 +187,22 @@ static void ensure_chunk_resources(size_t chunk_size, size_t required_chunks)
   if (g_comp_ctx.d_comp_ptrs) CUDA_CALL(hipFree(g_comp_ctx.d_comp_ptrs));
   if (g_comp_ctx.d_uncomp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_uncomp_sizes));
   if (g_comp_ctx.d_comp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_comp_sizes));
+  if (g_comp_ctx.d_actual_uncomp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_actual_uncomp_sizes));
+  if (g_comp_ctx.d_statuses) CUDA_CALL(hipFree(g_comp_ctx.d_statuses));
 
   CUDA_CALL(hipMalloc(&g_comp_ctx.d_uncomp_ptrs, new_max_chunks * sizeof(void*)));
   CUDA_CALL(hipMalloc(&g_comp_ctx.d_comp_ptrs, new_max_chunks * sizeof(void*)));
   CUDA_CALL(hipMalloc(&g_comp_ctx.d_uncomp_sizes, new_max_chunks * sizeof(size_t)));
   CUDA_CALL(hipMalloc(&g_comp_ctx.d_comp_sizes, new_max_chunks * sizeof(size_t)));
+  CUDA_CALL(hipMalloc(&g_comp_ctx.d_actual_uncomp_sizes, new_max_chunks * sizeof(size_t)));
+  CUDA_CALL(hipMalloc(&g_comp_ctx.d_statuses, new_max_chunks * sizeof(hipcompStatus)));
+
+  g_comp_ctx.h_actual_uncomp_sizes = (size_t*)host_realloc_checked(
+      g_comp_ctx.h_actual_uncomp_sizes, new_max_chunks * sizeof(size_t),
+      "actual uncompressed size table");
+  g_comp_ctx.h_statuses = (hipcompStatus*)host_realloc_checked(
+      g_comp_ctx.h_statuses, new_max_chunks * sizeof(hipcompStatus),
+      "decompression status table");
 
   g_comp_ctx.max_chunks = new_max_chunks;
 
@@ -406,20 +423,53 @@ extern "C" int CUDA_DecompressWavefield(
   CUDA_CALL(hipMemcpyAsync(g_comp_ctx.d_uncomp_sizes, g_comp_ctx.h_uncomp_sizes,
                            header.num_chunks * sizeof(size_t), hipMemcpyHostToDevice, g_comp_ctx.stream));
 
+  CUDA_CALL(hipMemset(g_comp_ctx.d_statuses, 0,
+                      header.num_chunks * sizeof(hipcompStatus)));
+
   HIPCOMP_CALL(hipcompBatchedLZ4DecompressAsync(
       (const void* const*)g_comp_ctx.d_comp_ptrs,
       g_comp_ctx.d_comp_sizes,
-      g_comp_ctx.d_uncomp_ptrs,
       g_comp_ctx.d_uncomp_sizes,
+      g_comp_ctx.d_actual_uncomp_sizes,
       header.num_chunks,
       g_comp_ctx.d_decomp_temp,
       g_comp_ctx.decomp_temp_bytes,
+      (void* const*)g_comp_ctx.d_uncomp_ptrs,
+      g_comp_ctx.d_statuses,
       g_comp_ctx.stream));
 
   CUDA_CALL(hipStreamSynchronize(g_comp_ctx.stream));
 
+  CUDA_CALL(hipMemcpy(g_comp_ctx.h_actual_uncomp_sizes,
+                      g_comp_ctx.d_actual_uncomp_sizes,
+                      header.num_chunks * sizeof(size_t),
+                      hipMemcpyDeviceToHost));
+  CUDA_CALL(hipMemcpy(g_comp_ctx.h_statuses,
+                      g_comp_ctx.d_statuses,
+                      header.num_chunks * sizeof(hipcompStatus),
+                      hipMemcpyDeviceToHost));
+
+  int success = 1;
+  for (size_t i = 0; i < header.num_chunks; ++i) {
+    if (g_comp_ctx.h_statuses[i] != HIPCOMP_STATUS_SUCCESS) {
+      fprintf(stderr, "hipCOMP: decompression failed for chunk %zu (status=%d)\n",
+              i, (int)g_comp_ctx.h_statuses[i]);
+      success = 0;
+      break;
+    }
+    if (g_comp_ctx.h_actual_uncomp_sizes[i] != g_comp_ctx.h_uncomp_sizes[i]) {
+      fprintf(stderr,
+              "hipCOMP: chunk %zu decompressed size mismatch (expected=%zu, actual=%zu)\n",
+              i,
+              g_comp_ctx.h_uncomp_sizes[i],
+              g_comp_ctx.h_actual_uncomp_sizes[i]);
+      success = 0;
+      break;
+    }
+  }
+
   free(chunk_sizes);
-  return 1;
+  return success;
 }
 
 extern "C" void CUDA_FinalizeCompression()
@@ -433,12 +483,16 @@ extern "C" void CUDA_FinalizeCompression()
   if (g_comp_ctx.d_uncomp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_uncomp_sizes));
   if (g_comp_ctx.d_comp_ptrs) CUDA_CALL(hipFree(g_comp_ctx.d_comp_ptrs));
   if (g_comp_ctx.d_comp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_comp_sizes));
+  if (g_comp_ctx.d_actual_uncomp_sizes) CUDA_CALL(hipFree(g_comp_ctx.d_actual_uncomp_sizes));
+  if (g_comp_ctx.d_statuses) CUDA_CALL(hipFree(g_comp_ctx.d_statuses));
 
   free(g_comp_ctx.h_compressed_buffer);
   free(g_comp_ctx.h_uncomp_ptrs);
   free(g_comp_ctx.h_uncomp_sizes);
   free(g_comp_ctx.h_comp_ptrs);
   free(g_comp_ctx.h_comp_sizes);
+  free(g_comp_ctx.h_actual_uncomp_sizes);
+  free(g_comp_ctx.h_statuses);
 
   CUDA_CALL(hipEventDestroy(g_comp_ctx.comp_event));
   CUDA_CALL(hipStreamDestroy(g_comp_ctx.stream));

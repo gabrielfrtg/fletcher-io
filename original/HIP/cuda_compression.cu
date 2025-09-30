@@ -6,7 +6,15 @@
 #include <hipcomp/lz4.h>
 #include <hipcomp/lz4.hpp>
 #include <hipcomp/hipcompManager.hpp>
-#include <hipcomp/shared_types.h>
+#if defined(__has_include)
+#  if __has_include(<hipcomp/shared_types.h>)
+#    include <hipcomp/shared_types.h>
+#  elif __has_include(<hipcomp/shared_types.hpp>)
+#    include <hipcomp/shared_types.hpp>
+#  endif
+#else
+#  include <hipcomp/shared_types.h>
+#endif
 
 #include <stdint.h>
 #include <stdio.h>
@@ -79,7 +87,7 @@ static size_t CUDA_CompressWavefield(
 
     hipcomp::LZ4Manager manager(
         chunk_size,
-        HIPCOMP_TYPE_FLOAT,
+        hipcomp::HIPCOMP_TYPE_FLOAT,
         g_comp_ctx.stream);
 
     hipcomp::CompressionConfig comp_config = manager.configure_compression(uncompressed_bytes);
@@ -107,7 +115,7 @@ static size_t CUDA_CompressWavefield(
     CUDA_CALL(hipStreamSynchronize(g_comp_ctx.stream));
 
     size_t actual_compressed_size = manager.get_compressed_output_size(
-        reinterpret_cast<const uint8_t*>(g_comp_ctx.d_compressed_buffer));
+        reinterpret_cast<uint8_t*>(g_comp_ctx.d_compressed_buffer));
 
     CUDA_CALL(hipMemcpyAsync(
         g_comp_ctx.h_compressed_buffer,
@@ -137,7 +145,7 @@ extern "C" int CUDA_DecompressWavefield(
 
     hipcomp::LZ4Manager manager(
         chunk_size,
-        HIPCOMP_TYPE_FLOAT,
+        hipcomp::HIPCOMP_TYPE_FLOAT,
         g_comp_ctx.stream);
 
     auto decomp_config = manager.configure_decompression(

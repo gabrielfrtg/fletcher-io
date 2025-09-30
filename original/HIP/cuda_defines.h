@@ -10,12 +10,13 @@
 
 
 #include <stdio.h>
+#include <hip/hip_runtime.h>
 
 #define CUDA_CALL(call) do{      \
    const hipError_t err=call;         \
    if (err != hipSuccess)       \
    {                             \
-     fprintf(stderr, "CUDA ERROR: %s on %s:%d\n", hipGetErrorString(err), __FILE__, __LINE__);\
+     fprintf(stderr, "HIP ERROR: %s on %s:%d\n", hipGetErrorString(err), __FILE__, __LINE__);\
      exit(1);                    \
    }}while(0)
 

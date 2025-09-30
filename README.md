@@ -1,7 +1,9 @@
 # fletcher-io
 
 
-## NVIDIA NVCOMP Support
+## GPU Compression Support
+
+### NVIDIA nvCOMP (CUDA)
 
 ### Build
 ```bash
@@ -23,3 +25,25 @@ checkpoints_compressed.bin
 checkpoints_decompressed.rsf
 checkpoints_decompressed.rsf@
 ```
+
+### AMD ROCm hipCOMP-core (HIP)
+
+The `original/HIP` backend provides a HIP port that layers hipCOMP-core onto the
+existing propagation kernels.  Build it by selecting the HIP backend and
+pointing the build to an installed hipCOMP-core tree:
+
+```bash
+make clean
+# Override ROCM_PATH if hipconfig cannot detect your installation automatically.
+ROCM_PATH=/opt/rocm-7.0.1 \
+  make -j backend=HIP USE_HIPCOMP=1 HIPCOMP_ROOT=/opt/rocm/hipcomp-core
+
+# When hipCOMP is built in-tree, point HIPCOMP_LIB_DIR at the directory that
+# contains libhipcomp.{so,a} (e.g. HIPCOMP_LIB_DIR=/opt/hipcomp-core/build/lib).
+```
+
+Compression-enabled HIP runs produce the same `checkpoints_compressed.bin`
+artifacts and on-console ratio summaries as the CUDA + nvCOMP flow.
+
+See [`docs/hip_backend.md`](docs/hip_backend.md) for an architectural overview
+of the new compression pipeline and metadata format.

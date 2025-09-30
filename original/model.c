@@ -8,6 +8,10 @@
 #include "ModPAPI.h"
 #endif
 
+#if defined(USE_NVCOMP) || defined(USE_HIPCOMP)
+#define USE_GPU_COMPRESSION
+#endif
+
 #define MODEL_GLOBALVARS
 #include "precomp.h"
 #undef MODEL_GLOBALVARS
@@ -70,7 +74,7 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 #include "precomp.h"
 #undef MODEL_INITIALIZE
 
-#ifdef USE_NVCOMP
+#ifdef USE_GPU_COMPRESSION
   FILE* checkpoint_file = NULL;
   checkpoint_file = fopen("checkpoints_compressed.bin", "wb");
   if (!checkpoint_file) {
@@ -85,7 +89,7 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 		      phi,    theta,
 		      pp,    pc,    qp,    qc);
 
-#ifdef USE_NVCOMP
+#ifdef USE_GPU_COMPRESSION
       if (checkpoint_file) {
           void* compressed_data = NULL;
           size_t compressed_size = 0;
@@ -156,7 +160,7 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
 
     tSim=it*dt;
     if (tSim >= tOut) {
-#ifdef USE_NVCOMP
+#ifdef USE_GPU_COMPRESSION
       if (checkpoint_file) {
           void* compressed_data = NULL;
           size_t compressed_size = 0;
@@ -195,7 +199,7 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
         // double dd1 = wtime();
         DumpSliceFile_Nofor(sx,sy,sz,pc,sPtr);
         // tdt+=wtime()-dd1;
-#ifdef USE_NVCOMP
+#ifdef USE_GPU_COMPRESSION
       }
 #endif
       
@@ -207,17 +211,17 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
     }
   }
 
-#ifdef USE_NVCOMP
+#ifdef USE_GPU_COMPRESSION
   if (checkpoint_file) {
   fclose(checkpoint_file);
   } else {
 #endif
   fclose(sPtr->fpBinary);
-#ifdef USE_NVCOMP
+#ifdef USE_GPU_COMPRESSION
   }
 #endif
 
-#ifdef USE_NVCOMP
+#ifdef USE_GPU_COMPRESSION
   // Optional: decompress entire checkpoint file after it is closed (file-level)
   // Enable with environment variable DECOMPRESS_FILE=1
   const char* decomp_file_env = getenv("DECOMPRESS_FILE");

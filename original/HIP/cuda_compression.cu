@@ -39,25 +39,7 @@ typedef int hipcompStatus;
 #endif
 
 #ifndef HIPCOMP_BatchedLZ4DefaultOpts
-#ifdef hipcompBatchedLZ4DefaultOpts
 #define HIPCOMP_BatchedLZ4DefaultOpts hipcompBatchedLZ4DefaultOpts
-#else
-#define HIPCOMP_BatchedLZ4DefaultOpts nvcompBatchedLZ4DefaultOpts
-#endif
-#else
-#define HIPCOMP_BatchedLZ4DefaultOpts hipcompBatchedLZ4DefaultOpts
-#endif
-
-#ifndef hipcompBatchedLZ4Opts_t
-#define hipcompBatchedLZ4Opts_t nvcompBatchedLZ4Opts_t
-#endif
-
-#ifndef hipcompBatchedLZ4CompressGetTempSize
-#define hipcompBatchedLZ4CompressGetTempSize nvcompBatchedLZ4CompressGetTempSize
-#define hipcompBatchedLZ4CompressGetMaxOutputChunkSize nvcompBatchedLZ4CompressGetMaxOutputChunkSize
-#define hipcompBatchedLZ4CompressAsync nvcompBatchedLZ4CompressAsync
-#define hipcompBatchedLZ4DecompressGetTempSize nvcompBatchedLZ4DecompressGetTempSize
-#define hipcompBatchedLZ4DecompressAsync nvcompBatchedLZ4DecompressAsync
 #endif
 
 typedef struct {

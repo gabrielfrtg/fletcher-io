@@ -240,7 +240,7 @@ static hipcompStatus launch_compress_with_retry(size_t num_chunks,
                                                 hipcompBatchedLZ4Opts_t opts)
 {
   const size_t max_attempts = 5;
-  hipcompStatus status = HIPCOMP_STATUS_SUCCESS;
+  hipcompStatus status;
 
   for (size_t attempt = 0; attempt < max_attempts; ++attempt) {
     status = hipcompBatchedLZ4CompressAsync(
@@ -293,7 +293,7 @@ static hipcompStatus launch_compress_with_retry(size_t num_chunks,
 static hipcompStatus launch_decompress_with_retry(size_t num_chunks)
 {
   const size_t max_attempts = 5;
-  hipcompStatus status = HIPCOMP_STATUS_SUCCESS;
+  hipcompStatus status;
 
   for (size_t attempt = 0; attempt < max_attempts; ++attempt) {
     status = hipcompBatchedLZ4DecompressAsync(

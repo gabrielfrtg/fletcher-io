@@ -42,5 +42,8 @@ ROCM_PATH=/opt/rocm-7.0.1 \
 # contains libhipcomp.{so,a} (e.g. HIPCOMP_LIB_DIR=/opt/hipcomp-core/build/lib).
 ```
 
+Compression-enabled HIP runs produce the same `checkpoints_compressed.bin`
+artifacts and on-console ratio summaries as the CUDA + nvCOMP flow.
+
 See [`docs/hip_backend.md`](docs/hip_backend.md) for an architectural overview
 of the new compression pipeline and metadata format.

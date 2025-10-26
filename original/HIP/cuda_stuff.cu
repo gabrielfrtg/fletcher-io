@@ -1,6 +1,9 @@
 #include "hip/hip_runtime.h"
 #include "cuda_defines.h"
 #include "cuda_stuff.h"
+#ifdef USE_HIPCOMP
+#include "cuda_compression.h"
+#endif
 
 static size_t sxsy=0;
 
@@ -97,6 +100,11 @@ void CUDA_Initialize(const int sx, const int sy, const int sz, const int bord,
   CUDA_CALL(hipDeviceSynchronize());
   printf("GPU memory usage = %ld MiB\n", 15*msize_vol/1024/1024);
 
+#ifdef USE_HIPCOMP
+  const size_t max_uncompressed = ((size_t)sx * sy) * sz * sizeof(float);
+  CUDA_InitCompression(max_uncompressed, 0);
+#endif
+
 }
 
 
@@ -137,6 +145,10 @@ void CUDA_Finalize()
    CUDA_CALL(hipFree(dev_pc));
    CUDA_CALL(hipFree(dev_qp));
    CUDA_CALL(hipFree(dev_qc));
+
+#ifdef USE_HIPCOMP
+   CUDA_FinalizeCompression();
+#endif
 
    printf("CUDA_Finalize: SUCCESS\n");
 }

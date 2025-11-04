@@ -227,7 +227,7 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
       "checkpoints_decompressed.rsf",
       "checkpoints_decompressed.rsf@",
       sx, sy, sz, bord, absorb,
-      dx, dy, dz, dtOutput);
+      sPtr->dx, sPtr->dy, sPtr->dz, sPtr->dt);
   }
 #endif
 

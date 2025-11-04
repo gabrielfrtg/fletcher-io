@@ -485,9 +485,9 @@ extern "C" void CUDA_DecompressCheckpointFile(const char* infile,
       printf("Could not open header file %s for writing.\n", out_header);
       return;
    }
-   const int nx_full = sx - 2*bord - 2*absorb;
-   const int ny_full = sy - 2*bord - 2*absorb;
-   const int nz_full = sz - 2*bord - 2*absorb;
+   const int nx_full = sx;
+   const int ny_full = sy;
+   const int nz_full = sz;
    float inferred_dt = dt_output;
    if (snapshot_count > 1 && second_time > first_time) {
       inferred_dt = second_time - first_time; // time between snapshots

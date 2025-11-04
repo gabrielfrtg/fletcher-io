@@ -13,4 +13,4 @@ ifdef USE_HIPCOMP
     LIBS += -L$(HIPCOMP_PATH)/lib -lhipcomp -Wl,-rpath,$(HIPCOMP_PATH)/lib
 endif
 
-LIBS += -L/opt/rocm/hip/lib -lamdhip64 -lstdc++ $(GCC_LIBS)
+LIBS += -L/opt/rocm/lib -lamdhip64 -lstdc++ $(GCC_LIBS)

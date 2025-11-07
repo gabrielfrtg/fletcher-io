@@ -212,7 +212,8 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
   fclose(checkpoint_file);
   } else {
 #endif
-  fclose(sPtr->fpBinary);
+  // close binary output file before measuring time to include total io time
+  CloseSliceFile(sPtr);
 #ifdef USE_HIPCOMP
   }
 #endif
@@ -230,9 +231,6 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
       sPtr->dx, sPtr->dy, sPtr->dz, sPtr->dt);
   }
 #endif
-
-  // close binary output file before measuring time to include total io time
-  CloseSliceFile(sPtr);
 
   uint64_t stamp2 = get_timestamp_ns();
 

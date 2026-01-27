@@ -76,6 +76,10 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
   if (!checkpoint_file) {
     printf("Warning: Cannot open compressed checkpoint file\n");
   }
+  // Track compression statistics
+  size_t total_original_size = 0;
+  size_t total_compressed_size = 0;
+  int num_checkpoints = 0;
 #endif
 
   // DRIVER_Initialize initialize target, allocate data etc
@@ -111,6 +115,11 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
               header.original_size = ((size_t)sx*sy)*sz * sizeof(float);
               header.compressed_size = compressed_size;
               header.timestamp = tSim;
+              
+              // Accumulate compression statistics
+              total_original_size += header.original_size;
+              total_compressed_size += compressed_size;
+              num_checkpoints++;
               
               // Write header and compressed data
               fwrite(&header, sizeof(CheckpointHeader), 1, checkpoint_file);
@@ -182,6 +191,11 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
               header.original_size = ((size_t)sx*sy)*sz * sizeof(float);
               header.compressed_size = compressed_size;
               header.timestamp = tSim;
+              
+              // Accumulate compression statistics
+              total_original_size += header.original_size;
+              total_compressed_size += compressed_size;
+              num_checkpoints++;
               
               // Write header and compressed data
               fwrite(&header, sizeof(CheckpointHeader), 1, checkpoint_file);
@@ -262,9 +276,19 @@ void Model(const int st, const int iSource, const float dtOutput, SlicePtr sPtr,
   printf ("MSamples/s %.0lf\n", MSamples);
   printf ("Memory High Water Mark is %ld %s\n",HWM, HWMUnit);
 
+#ifdef USE_HIPCOMP
+  double compression_ratio = 0.0;
+  if (total_compressed_size > 0) {
+    compression_ratio = (double)total_original_size / (double)total_compressed_size;
+  }
+  printf("original,%s,%d,%d,%d,%d,%.2f,%.2f,%.2f,%f,%f,%lu,%lu,%lf,%lf,%.0lf,%.2f\n", 
+          sPtr->fName, sx - 2*bord - 2*absorb, sy - 2*bord - 2*absorb, sz - 2*bord - 2*absorb, absorb, dx, dy, dz, dt, st*dt, 
+          stamp1, stamp2, walltime, execution_time, MSamples, compression_ratio);
+#else
   printf("original,%s,%d,%d,%d,%d,%.2f,%.2f,%.2f,%f,%f,%lu,%lu,%lf,%lf,%.0lf\n", 
           sPtr->fName, sx - 2*bord - 2*absorb, sy - 2*bord - 2*absorb, sz - 2*bord - 2*absorb, absorb, dx, dy, dz, dt, st*dt, 
           stamp1, stamp2, walltime, execution_time, MSamples);
+#endif
 
   // Dump Execution Metrics in CSV
   

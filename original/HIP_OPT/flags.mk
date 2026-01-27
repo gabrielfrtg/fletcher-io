@@ -1,6 +1,6 @@
 CC=gcc
 PGCC=hipcc
-CFLAGS=-lm
+CFLAGS=-lm -fPIC
 # GPU Architecture: gfx1100 = Radeon RX 7900 XT/XTX (RDNA 3)
 # Other options:
 #   gfx942  = MI300X (CDNA 3)
@@ -8,7 +8,7 @@ CFLAGS=-lm
 #   gfx908  = MI100 (CDNA 1)
 #   gfx906  = MI50/MI60
 GPU_ARCH ?= gfx1100
-PGCCFLAGS=-O3 -x hip -D__HIP_ROCclr__ -D__HIP_ARCH_GFX1100__=1 -D__HIP_PLATFORM_AMD__ --rocm-path=${ROCM_PATH} --offload-arch=$(GPU_ARCH)
+PGCCFLAGS=-O3 -fPIC -x hip -D__HIP_ROCclr__ -D__HIP_ARCH_GFX1100__=1 -D__HIP_PLATFORM_AMD__ --rocm-path=${ROCM_PATH} --offload-arch=$(GPU_ARCH)
 
 LIBS =
 

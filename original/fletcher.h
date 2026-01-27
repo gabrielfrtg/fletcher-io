@@ -1,5 +1,5 @@
 #define MI 0.2           // stability factor to compute dt
-#define ARGS 11          // tokens in executable command
+#define ARGS 11          // minimum tokens in executable command
 
 #define _DUMP       // execution summary dump
 //#undef  _DUMP     // execution summary dump

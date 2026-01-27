@@ -12,6 +12,10 @@
 
 enum Form {ISO, VTI, TTI};
 
+int BSIZE_X;
+int BSIZE_Y;
+int BSIZE_Z;
+
 int main(int argc, char** argv) {
 
   enum Form prob;        // problem formulation
@@ -58,6 +62,18 @@ int main(int argc, char** argv) {
   dz=atof(argv[8]);
   dt=atof(argv[9]);
   tmax=atof(argv[10]);
+  
+  // BSIZE parameters are optional (for HIP_OPT and HIP_OPT_UM backends)
+  if (argc >= 14) {
+    BSIZE_X=atoi(argv[11]);
+    BSIZE_Y=atoi(argv[12]);
+    BSIZE_Z=atoi(argv[13]);
+  } else {
+    // Default values for backends that don't use BSIZE
+    BSIZE_X=32;
+    BSIZE_Y=16;
+    BSIZE_Z=1;
+  }
 
   // verify problem formulation
 

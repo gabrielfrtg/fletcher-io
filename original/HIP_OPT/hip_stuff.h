@@ -1,6 +1,10 @@
 #ifndef __HIP_STUFF
 #define __HIP_STUFF
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void HIP_Initialize(const int sx, const int sy, const int sz, const int bord,
 	       float dx, float dy, float dz, float dt,
 	       float *  ch1dxx, float *  ch1dyy, float *  ch1dzz, 
@@ -13,5 +17,9 @@ void HIP_Initialize(const int sx, const int sy, const int sz, const int bord,
 void HIP_Finalize();
 
 void HIP_Update_pointers(const int sx, const int sy, const int sz, float *pc);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

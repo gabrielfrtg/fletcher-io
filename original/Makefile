@@ -68,4 +68,12 @@ clean:
 	rm -f *.o $(TARGET)
 
 clean-all:
-	rm -f */*.o *.o $(TARGET)
+	@echo "Cleaning all backends..."
+	-cd CUDA && make clean 2>/dev/null || true
+	-cd HIP && make clean 2>/dev/null || true
+	-cd HIP_OPT && make clean 2>/dev/null || true
+	-cd OpenACC && make clean 2>/dev/null || true
+	-cd OpenMP && make clean 2>/dev/null || true
+	rm -f *.o $(TARGET)
+	rm -f */*.o */*.a
+	@echo "All backends cleaned."

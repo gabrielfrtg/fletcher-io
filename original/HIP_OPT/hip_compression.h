@@ -9,6 +9,23 @@ extern "C" {
 // compression_level: 0=fast, 1=default, 2=high compression
 void HIP_InitCompression(size_t max_uncompressed_size, int compression_level);
 
+#ifdef COMP_ALGO_ZFP
+// ZFP-specific functions
+
+// Set ZFP dimensions (must be called before compression for 3D arrays)
+void HIP_SetZfpDimensions(size_t nx, size_t ny, size_t nz);
+
+// Enable/disable error validation (for benchmarking lossy compression quality)
+// When enabled, saves original data before compression and computes error after decompression
+void HIP_SetZfpValidation(int enable);
+
+// Get error statistics after decompression (only valid if validation was enabled)
+void HIP_GetZfpErrorStats(double* max_abs, double* max_rel, double* rmse, double* psnr);
+
+// Print error statistics to stdout
+void HIP_PrintZfpErrorStats();
+#endif
+
 void HIP_Get_compressed_checkpoint(const int sx, const int sy, const int sz,
                                     void** compressed_data, size_t* compressed_size);
 
